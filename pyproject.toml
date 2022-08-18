@@ -19,7 +19,7 @@ maintainers = [
 urls.Documentation = "https://gliderport.readthedocs.io/"
 urls.Source = "https://github.com/lhqing/gliderport"
 urls.Home-page = "https://github.com/lhqing/gliderport"
-dependencies = ["anndata"]
+dependencies = ["pandas"]
 
 [project.optional-dependencies]
 dev = [
@@ -74,3 +74,6 @@ exclude = '''
   )/
 )
 '''
+
+[project.scripts]
+glider = "gliderport.__main__:main"
