@@ -25,5 +25,6 @@ run: |
   --cpu {{ cpu }}
 
   # delete input files
-  sed 's/.*/rm -r "\0"/' ./allc_files.txt
+  xargs -I{} rm -rf "{}" < ./allc_files.txt
+  xargs -I{} rm -rf "{}".tbi < ./allc_files.txt
   rm -f ./chrom.sizes ./allc_files.txt

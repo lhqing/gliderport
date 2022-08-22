@@ -28,7 +28,7 @@ def prepare_merge_allc(
         record = {
             "preset": "merge_allc",
             "bucket": output_bucket,
-            "prefix": output_prefix,
+            "prefix": f'{output_prefix}/{group}',
             "chrom_size_cloud_path": chrom_size_cloud_path,
             "output_name": f"{group}.allc.tsv.gz",
             "allc_paths": sub_df["allc_path"].tolist(),
