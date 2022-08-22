@@ -3,10 +3,7 @@ import pathlib
 import pandas as pd
 
 from .template import rander_preset_config, rander_preset_sky
-
-
-def _get_cpu_from_instance_name(instance_name):
-    return int(instance_name.split("-")[-1])
+from .utilities import _get_cpu_from_instance_name
 
 
 def _add_tbi(allc_table):
@@ -23,6 +20,7 @@ def prepare_merge_allc(
     output_prefix,
     instance="n2d-highcpu-48",
     region="us-west1",
+    merge_allc_cpu=None,
 ):
     """Prepare merge allc cloud config."""
     job_dir = pathlib.Path(job_dir)
@@ -41,7 +39,7 @@ def prepare_merge_allc(
             "chrom_size_cloud_path": chrom_size_cloud_path,
             "output_name": f"{group}.allc.tsv.gz",
             "allc_paths": sub_df["allc_path"].tolist(),
-            "cpu": _get_cpu_from_instance_name(instance),
+            "cpu": _get_cpu_from_instance_name(instance) if merge_allc_cpu is None else merge_allc_cpu,
         }
 
         out_config = job_dir / f"{group}.config.yaml"

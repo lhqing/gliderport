@@ -1,0 +1,27 @@
+delete_input: true
+input:
+  local:
+    {% for r1_path in r1_paths %}- {{ r1_path }}
+    {% endfor %}
+    {% for r2_path in r2_paths %}- {{ r2_path }}
+    {% endfor %}
+output:
+  bucket: {{ bucket }}
+  prefix: {{ prefix }}
+run: |
+  set -e
+  cd $HOME/sky_workdir/
+  pwd
+
+  # move all fastq files to fastq dir
+  mkdir -p fastq
+  mv *.gz fastq
+
+  # download chrom size path
+  gsutil cp {{ snakefile_cloud_path }} ./Snakefile
+
+  # merge allc files
+  snakemake --configfile "{{ mapping_yaml_path }}" -j
+
+  # delete .snakemake dir
+  rm -rf .snakemake

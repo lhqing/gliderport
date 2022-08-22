@@ -7,6 +7,7 @@ import click
 @click.option("--job_dir", required=True, help="Path to local job directory, will create if not exists.")
 @click.option("--output_bucket", required=True, help="Bucket name for output files.")
 @click.option("--output_prefix", required=True, help="Prefix for output files.")
+@click.option("--merge_allc_cpu", required=True, help="CPU for merge allc job.")
 @click.option("--instance", required=False, default="n2d-highcpu-48", help="VM instance name.")
 @click.option("--region", required=True, default="us-west1", help="VM region.")
 @click.option("--port_idle_hours", required=False, default=100, help="Port idle hours.")
@@ -18,15 +19,16 @@ def merge_allc(
     job_dir,
     output_bucket,
     output_prefix,
+    merge_allc_cpu,
     instance="n2d-highcpu-48",
     region="us-west1",
     port_idle_hours=100,
+    use_hash=None,
+    spot=True,
     n_uploader=1,
     n_worker=16,
     worker_idle_time=600,
     worker_launch_timeout=600,
-    use_hash=None,
-    spot=True,
 ):
     """Merge allc files."""
     from gliderport.preset.merge_allc import prepare_merge_allc
@@ -41,6 +43,7 @@ def merge_allc(
         output_prefix=output_prefix,
         instance=instance,
         region=region,
+        merge_allc_cpu=merge_allc_cpu,
     )
     port = GliderPort(
         local_job_dir=job_dir,

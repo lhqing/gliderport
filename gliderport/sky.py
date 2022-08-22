@@ -233,44 +233,17 @@ class _SpotWorker:
             cmd = f"sky spot launch -y -d -n {self.job_name} {temp_config_file.name}"
 
             print(f"Launching worker {self.worker_id}\n{cmd}")
-            self._launch_process = subprocess.Popen(
-                cmd, shell=True, stdout=subprocess.PIPE, stderr=subprocess.PIPE, encoding="utf-8"
+            subprocess.run(
+                cmd,
+                shell=True,
+                capture_output=True,
+                encoding="utf-8",
+                check=True,
+                timeout=self._launch_timeout,
             )
-            self._launch_time = time.time()
         return
 
     def check_launch(self):
-        """Check worker status before launch process."""
-        if self._launch_process is not None:
-            try:
-                self._launch_process.wait(timeout=0.1)
-                # the previous launch process is finished
-                # check status and ready to launch next job
-                if self._launch_process.returncode != 0:
-                    self._launch_failed_count += 1
-                    print(f"Launch worker {self.worker_id} failed {self._launch_failed_count} times")
-                    print(self._launch_process.stderr.read())
-                else:
-                    self._launch_failed_count = 0
-                self._launch_process = None
-
-            except subprocess.TimeoutExpired:
-                cur_time = time.time()
-                if cur_time - self._launch_time > self._launch_timeout:
-                    print(f"Launch worker {self.worker_id} timeout")
-                    self._launch_process.kill()
-                    stdout, stderr = self._launch_process.communicate()
-                    print(stdout)
-                    print(stderr)
-                    self._launch_failed_count += 1
-                    self._launch_process = None
-
-                else:
-                    # still launching
-                    return
-            if self._launch_failed_count >= 3:
-                raise RuntimeError(f"Launch worker {self.worker_id} failed 3 times")
-
         if not self.is_terminal:
             print(f"Worker {self.worker_id} is still working with status {self.status}")
             return
