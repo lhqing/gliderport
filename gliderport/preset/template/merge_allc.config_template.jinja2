@@ -8,10 +8,9 @@ output:
   prefix: {{ prefix }}
 run: |
   set -e
-  conda activate base
-  pwd
   cd $HOME/sky_workdir/
   pwd
+
   # download chrom size path
   gsutil cp {{ chrom_size_cloud_path}} ./chrom.sizes
 
@@ -26,4 +25,5 @@ run: |
   --cpu {{ cpu }}
 
   # delete input files
-  rm -rf ./allc/ ./chrom.sizes
+  sed 's/.*/rm -r "\0"/' ./allc_files.txt
+  rm -f ./chrom.sizes ./allc_files.txt

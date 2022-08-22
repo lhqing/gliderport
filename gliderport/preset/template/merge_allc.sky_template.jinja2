@@ -8,7 +8,7 @@ setup: |
   conda config --add channels bioconda
   conda config --add channels conda-forge
   conda install -y mamba -n base -c conda-forge
-  mamba install -y anndata pandas pybedtools pyBigWig pysam seaborn xarray
+  mamba install -y anndata pandas pybedtools pyBigWig pysam seaborn xarray htslib
   pip install allcools
   pip install git+https://github.com/lhqing/gliderport.git
 

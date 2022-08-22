@@ -64,9 +64,22 @@ class Job:
         os.chdir(previous_cwd)
         return
 
+    def _clear_local_files(self):
+        # clean up local files
+        for files in os.listdir(self._local_prefix):
+            path = os.path.join(self._local_prefix, files)
+            try:
+                shutil.rmtree(path)
+            except OSError:
+                os.remove(path)
+
     def run(self):
         """Run the job."""
         print(f"Running job with config file {self.config_file}")
+
+        # make sure local prefix is empty
+        self._clear_local_files()
+
         self.file_downloader.transfer()
         # remove download success flag after making sure it exists
         assert self.file_downloader.download_success_path.exists(), "Download success flag does not exist"
@@ -76,8 +89,8 @@ class Job:
 
         self.file_uploader.transfer()
 
-        # delete input from PD
-        shutil.rmtree(self._local_prefix)
+        # clean up local files for the next job
+        self._clear_local_files()
 
         # delete input from GCS if flag is set
         if self._delete_input_from_gcs_flag:
