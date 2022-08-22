@@ -5,7 +5,7 @@ import shutil
 import subprocess
 import time
 from pathlib import Path
-from tempfile import TemporaryDirectory
+from tempfile import NamedTemporaryFile, TemporaryDirectory
 
 import gcsfs
 
@@ -21,11 +21,10 @@ class Job:
         self.config, _ = read_config(config_file, input_mode="gcs")
         self._delete_input_from_gcs_flag = self.config.get("delete_input", False)
 
-        self._local_prefix = Path(self.config["vm_local_prefix"])
-        subprocess.run(f"mkdir -p {self._local_prefix}", shell=True, check=True)
+        self._local_prefix = Path(f"{os.environ['HOME']}/sky_workdir/")
+        self._local_prefix.mkdir(parents=True, exist_ok=True)
 
         print(f"Local prefix on VM is {self._local_prefix}")
-
         self.file_downloader = FileDownloader(
             bucket=self.config["input"]["bucket"], prefix=self.config["input"]["prefix"], dest_path=self._local_prefix
         )
@@ -46,10 +45,17 @@ class Job:
         # change working directory to local prefix
         previous_cwd = os.getcwd()
         os.chdir(self._local_prefix)
-        for command in commands:
+        with NamedTemporaryFile(mode="w", delete=False) as f:
+            for command in commands:
+                f.write(f"{command}\n")
+            f.flush()
+
+            # run commands
             try:
-                print(f"Running command: {command}")
-                subprocess.run(command, shell=True, capture_output=True, check=True, encoding="utf-8")
+                print(f"Running commands: {f.name}")
+                subprocess.run(
+                    f"bash {f.name}", shell=True, capture_output=True, check=True, encoding="utf-8", env=os.environ
+                )
             except subprocess.CalledProcessError as e:
                 print(e.output)
                 print(e.stderr)

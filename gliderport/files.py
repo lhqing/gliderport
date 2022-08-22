@@ -38,7 +38,7 @@ class GCSClient:
     def _run(cls, cmd):
         try:
             print("Running command:", cmd)
-            subprocess.run(cmd, shell=True, capture_output=True, encoding="utf-8")
+            subprocess.run(cmd, shell=True, capture_output=True, check=True, encoding="utf-8")
         except subprocess.CalledProcessError as e:
             print(e.output)
             print(e.stderr)

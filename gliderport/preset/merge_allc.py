@@ -5,6 +5,10 @@ import pandas as pd
 from .template import rander_preset_config, rander_preset_sky
 
 
+def _get_cpu_from_instance_name(instance_name):
+    return int(instance_name.split("-")[-1])
+
+
 def prepare_merge_allc(
     allc_table,
     chrom_size_cloud_path,
@@ -28,6 +32,7 @@ def prepare_merge_allc(
             "chrom_size_cloud_path": chrom_size_cloud_path,
             "output_name": f"{group}.allc.tsv.gz",
             "allc_paths": sub_df["allc_path"].tolist(),
+            "cpu": _get_cpu_from_instance_name(instance),
         }
 
         out_config = job_dir / f"{group}.config.yaml"

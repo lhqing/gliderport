@@ -3,25 +3,27 @@ input:
   local:
     {% for allc_path in allc_paths %}- {{ allc_path }}
     {% endfor %}
-vm_local_prefix: ~/merge_allc
 output:
   bucket: {{ bucket }}
   prefix: {{ prefix }}
 run: |
   set -e
+  conda activate base
+  pwd
+  cd $HOME/sky_workdir/
+  pwd
   # download chrom size path
-  gsutil cp {{ chrom_size_cloud_path}} ~/chrom.sizes
+  gsutil cp {{ chrom_size_cloud_path}} ./chrom.sizes
 
   # setup
-  cd ~/merge_allc
-  cat ~/merge_allc/*.tsv.gz > ~/merge_allc/allc_files.txt
+  find ./ | grep "tsv.gz$" > ./allc_files.txt
 
   # merge allc files
   allcools merge-allc \
-  --allc_paths ~/merge_allc/allc_files.txt \
-  --output_path ~/merge_allc/{{ output_name }} \
-  --chrom_size_path ~/chrom.sizes \
+  --allc_paths ./allc_files.txt \
+  --output_path ./{{ output_name }} \
+  --chrom_size_path ./chrom.sizes \
   --cpu {{ cpu }}
 
-  # delete input allc files
-  sed 's/.*/rm -r "\0"/' ~/merge_allc/allc_files.txt
+  # delete input files
+  rm -rf ./allc/ ./chrom.sizes

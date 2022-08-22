@@ -5,7 +5,6 @@ Format of job config:
 - input: 1) local file list; 2) bucket and prefix to get files from GCS
 - output: bucked and prefix to upload files to GCS
 - run: multiline commands or a list of commands to run on the VM to generate the output files
-- vm_local_prefix: Prefix to put the input files on the local PD
 - delete_input (optional): True or False, whether to delete the input files on source GCS after the job is done
 """
 
@@ -17,7 +16,6 @@ def read_config(config_file, input_mode=None):
     with open(config_file) as fp:
         config = yaml.load(fp, Loader=yaml.FullLoader)
 
-    assert "vm_local_prefix" in config, f"vm_local_prefix must be specified in config.\n{config}"
     assert "input" in config, f"Input is not defined in config.\n{config}"
 
     if "local" in config["input"]:
