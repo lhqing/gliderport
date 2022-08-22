@@ -11,7 +11,7 @@ import click
 @click.option("--region", required=True, default="us-west1", help="VM region.")
 @click.option("--port_idle_hours", required=False, default=100, help="Port idle hours.")
 @click.option("--use_hash", required=False, default=None, help="Use a fixed hash for the glider port.")
-@click.option("--use_hash", required=False, default=None, help="Use a fixed hash for the glider port.")
+@click.option("--spot/--no-spot", default=True, help="Use spot VMs.")
 def merge_allc(
     allc_table_csv,
     chrom_size_cloud_path,
