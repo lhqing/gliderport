@@ -145,7 +145,31 @@ class NullStatus(enum.Enum):
 
 
 class _SpotWorker:
-    def __init__(self, worker_id, template_dict, bucket, job_config_dir, worker_hash, max_idle_time=600):
+    """Spot worker class."""
+
+    def __init__(
+        self, worker_id, template_dict, bucket, job_config_dir, worker_hash, launch_timeout=600, max_idle_time=600
+    ):
+        """
+        Initialize a spot worker.
+
+        Parameters
+        ----------
+        worker_id :
+            worker id integer, one worker only has one active spot job
+        template_dict :
+            template dictionary for sky spot launch vm
+        bucket :
+            bucket name for the spot job to monitor job configs
+        job_config_dir :
+            directory prefix for the spot job to monitor job configs
+        worker_hash :
+            worker hash for the spot job name
+        launch_timeout :
+            timeout for spot job launch process
+        max_idle_time :
+            max idle time for spot job vm worker
+        """
         self.worker_id = worker_id
 
         self.bucket = bucket
@@ -170,6 +194,10 @@ class _SpotWorker:
         self._jobs = {}
 
         self._template = template_dict
+        self._launch_process = None
+        self._launch_failed_count = 0
+        self._launch_time = None
+        self._launch_timeout = launch_timeout
 
     def update_status(self, status):
         if not isinstance(status, dict):
@@ -203,12 +231,46 @@ class _SpotWorker:
             yaml.dump(worker_config, temp_config_file, default_style="|")
 
             cmd = f"sky spot launch -y -d -n {self.job_name} {temp_config_file.name}"
-            # TODO: timeout and retry
+
             print(f"Launching worker {self.worker_id}\n{cmd}")
-            subprocess.run(cmd, shell=True, check=True)
+            self._launch_process = subprocess.Popen(
+                cmd, shell=True, stdout=subprocess.PIPE, stderr=subprocess.PIPE, encoding="utf-8"
+            )
+            self._launch_time = time.time()
         return
 
     def check_launch(self):
+        """Check worker status before launch process."""
+        if self._launch_process is not None:
+            try:
+                self._launch_process.wait(timeout=0.1)
+                # the previous launch process is finished
+                # check status and ready to launch next job
+                if self._launch_process.returncode != 0:
+                    self._launch_failed_count += 1
+                    print(f"Launch worker {self.worker_id} failed {self._launch_failed_count} times")
+                    print(self._launch_process.stderr.read())
+                else:
+                    self._launch_failed_count = 0
+                self._launch_process = None
+
+            except subprocess.TimeoutExpired:
+                cur_time = time.time()
+                if cur_time - self._launch_time > self._launch_timeout:
+                    print(f"Launch worker {self.worker_id} timeout")
+                    self._launch_process.kill()
+                    stdout, stderr = self._launch_process.communicate()
+                    print(stdout)
+                    print(stderr)
+                    self._launch_failed_count += 1
+                    self._launch_process = None
+
+                else:
+                    # still launching
+                    return
+            if self._launch_failed_count >= 3:
+                raise RuntimeError(f"Launch worker {self.worker_id} failed 3 times")
+
         if not self.is_terminal:
             print(f"Worker {self.worker_id} is still working with status {self.status}")
             return
@@ -236,7 +298,39 @@ class _SpotWorker:
 class WorkerManager:
     """Manage sky spot-VM workers."""
 
-    def __init__(self, job_bucket, sky_template_path, fs, worker_hash, n_workers=16, max_idle_time=600, spot=True):
+    def __init__(
+        self,
+        job_bucket,
+        sky_template_path,
+        fs,
+        worker_hash,
+        n_workers=16,
+        launch_timeout=600,
+        max_idle_time=600,
+        spot=True,
+    ):
+        """
+        Initialize a worker manager.
+
+        Parameters
+        ----------
+        job_bucket :
+            bucket name for the spot jobs to monitor job configs
+        sky_template_path :
+            path to the sky template file
+        fs :
+            filesystem object
+        worker_hash :
+            worker hash for the spot job name
+        n_workers :
+            number of workers to launch
+        launch_timeout :
+            timeout for spot job launch process
+        max_idle_time :
+            max idle time for spot job vm worker
+        spot :
+            whether to use spot instance
+        """
         self.bucket = job_bucket
         self.job_config_dir = "job_config"
         self.n_workers = n_workers
@@ -248,6 +342,7 @@ class WorkerManager:
             self._sky_template_config = yaml.full_load(f)
 
         self._worker_max_idle_time = max_idle_time
+        self._worker_launch_timeout = launch_timeout
         self._workers = {}
         self._init_workers(spot)
         self._worker_jobs = {}
@@ -263,6 +358,7 @@ class WorkerManager:
                     job_config_dir=self.job_config_dir,
                     max_idle_time=self._worker_max_idle_time,
                     worker_hash=self._worker_hash,
+                    launch_timeout=self._worker_launch_timeout,
                 )
                 for i in range(self.n_workers)
             }
@@ -345,7 +441,29 @@ class GliderPort:
     and how to decide when to stop.
     """
 
-    def __init__(self, local_job_dir, n_uploader=1, n_worker=16, use_hash=None, spot=True):
+    def __init__(
+        self, local_job_dir, n_uploader=1, n_worker=16, max_idle_time=600, launch_timeout=600, use_hash=None, spot=True
+    ):
+        """
+        Initialize a glider port.
+
+        Parameters
+        ----------
+        local_job_dir :
+            local job directory for the glider port to monitor
+        n_uploader :
+            number of uploader to launch
+        n_worker :
+            number of workers to launch
+        max_idle_time :
+            max idle time for spot job vm worker
+        launch_timeout :
+            timeout for spot job launch process
+        use_hash :
+            worker hash for the spot job name
+        spot :
+            whether to use spot instance
+        """
         self.local_job_dir = Path(local_job_dir).absolute().resolve()
         if use_hash is None:
             self.gliderport_hash = _get_hash()
@@ -371,6 +489,8 @@ class GliderPort:
             spot=spot,
             fs=self._fs,
             worker_hash=self.gliderport_hash,
+            max_idle_time=max_idle_time,
+            launch_timeout=launch_timeout,
         )
         return
 
@@ -380,8 +500,16 @@ class GliderPort:
         self.worker_manager.launch_workers()
         return
 
-    def run(self, max_idle_time=360000):
-        """Run on-prime."""
+    def run(self, max_idle_hours=100):
+        """
+        Run GliderPort on-prime.
+
+        Parameters
+        ----------
+        max_idle_hours :
+            max idle hours for glider port to wait
+        """
+        max_idle_time = max_idle_hours * 3600
         idle_time = 0
         while True:
             jobs_deposited_in_this_loop = 0
@@ -410,8 +538,6 @@ class GliderPort:
                 self._update_worker()
                 # Reset idle time if jobs are deposited.
                 idle_time = 0
-
-        # TODO: after all jobs finish, check if job_config dir is all clear, delete input if option is set
         return
 
     def _delete_bucket(self):

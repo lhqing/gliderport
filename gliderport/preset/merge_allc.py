@@ -9,8 +9,14 @@ def _get_cpu_from_instance_name(instance_name):
     return int(instance_name.split("-")[-1])
 
 
+def _add_tbi(allc_table):
+    tib_table = allc_table.copy()
+    tib_table["allc_path"] = tib_table["allc_path"] + ".tbi"
+    return pd.concat([allc_table, tib_table])
+
+
 def prepare_merge_allc(
-    allc_table,
+    allc_table_csv,
     chrom_size_cloud_path,
     job_dir,
     output_bucket,
@@ -23,12 +29,15 @@ def prepare_merge_allc(
     job_dir.mkdir(exist_ok=True, parents=True)
 
     # prepare job config
-    allc_table = pd.read_csv(allc_table, header=None, names=["allc_path", "group"])
+    allc_table = pd.read_csv(allc_table_csv, header=None, names=["allc_path", "group"])
+    # add tbi paths for each allc file
+    allc_table = _add_tbi(allc_table)
+
     for group, sub_df in allc_table.groupby("group"):
         record = {
             "preset": "merge_allc",
             "bucket": output_bucket,
-            "prefix": f'{output_prefix}/{group}',
+            "prefix": f"{output_prefix}/{group}",
             "chrom_size_cloud_path": chrom_size_cloud_path,
             "output_name": f"{group}.allc.tsv.gz",
             "allc_paths": sub_df["allc_path"].tolist(),

@@ -40,12 +40,11 @@ def vm_worker(bucket, prefix, max_idle_time):
 @click.option("--local_job_dir", required=True, help="Local job directory")
 @click.option("--n_uploader", required=False, default=1, help="Number of uploaders")
 @click.option("--n_worker", required=False, default=16, help="Number of workers")
-@click.option("--max_idle_time", required=False, default=100, help="Max idle time in hours")
-def port(local_job_dir, n_uploader=1, n_worker=16, max_idle_time=100):
+@click.option("--max_idle_hours", required=False, default=100, help="Max idle hours for glider port to wait")
+def port(local_job_dir, n_uploader=1, n_worker=16, max_idle_hours=100):
     """Run a glider port."""
-    max_idle_time *= 3600  # hours to seconds
     gp = GliderPort(local_job_dir=local_job_dir, n_uploader=n_uploader, n_worker=n_worker)
-    gp.run(max_idle_time=max_idle_time)
+    gp.run(max_idle_hours=max_idle_hours)
     return
 
 
@@ -61,16 +60,4 @@ def _glider():
     glider.add_command(vm_worker)
     glider.add_command(port)
     glider()
-    return
-
-
-@click.group()
-def glider_preset():
-    """Glider port preset command line interface."""
-    return
-
-
-def _glider_preset():
-    """Glider port preset command line interface."""
-    glider_preset()
     return
