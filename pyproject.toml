@@ -76,4 +76,5 @@ exclude = '''
 '''
 
 [project.scripts]
-glider = "gliderport.__main__:main"
+glider = "gliderport.__main__:_glider"
+glider-preset = "gliderport.__main__:_glider_preset"

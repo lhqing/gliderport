@@ -110,7 +110,7 @@ class FileUploader(GCSClient):
     Take a list of files and a destination location (GCS bucket or local path) and move them to the destination folder
     """
 
-    def __init__(self, bucket, prefix, file_paths, file_list_path=None, config_file=None):
+    def __init__(self, bucket, prefix, file_paths, file_list_path=None):
         """
         Initialize file manager class.
 
@@ -124,8 +124,6 @@ class FileUploader(GCSClient):
             List of file paths to be transferred
         file_list_path :
             A single file with each row containing a file path to be transferred
-        config_file :
-            Config file to be transferred
         """
         super().__init__(bucket, prefix)
         if file_list_path is not None:
@@ -137,10 +135,6 @@ class FileUploader(GCSClient):
         self.add_file_paths(file_paths)
         self.file_names = [path.name for path in self.file_paths]
 
-        self.config_file = config_file
-        if config_file is not None:
-            self.config_file = Path(config_file).absolute().resolve()
-
         self.upload_success_path = f"{self.prefix}/UPLOAD_SUCCESS"
 
     def _validate_transfer(self):
@@ -149,31 +143,23 @@ class FileUploader(GCSClient):
         flag_path = f"{self.prefix}/UPLOAD_SUCCESS"
         if flag_path not in gcs_paths:
             return False
-
-        if self.config_file is not None:
-            config_path = f"{self.prefix}/CONFIG"
-            if config_path not in gcs_paths:
-                return False
         return True
 
     def _transfer(self):
         file_list_temp_path = self._move_files(self.file_paths, self.gcs_location)
-        if self.config_file is not None:
-            self._move_file_and_dir(self.config_file, f"{self.gcs_location}/CONFIG")
         self._move_file_and_dir(file_list_temp_path, f"{self.gcs_location}/UPLOAD_SUCCESS")
 
 
 class FileDownloader(GCSClient):
     """Download files from GCS."""
 
-    def __init__(self, bucket, prefix, dest_path, check_config=True):
+    def __init__(self, bucket, prefix, dest_path):
         super().__init__(bucket, prefix)
         self.dest_path = Path(dest_path).absolute().resolve()
         self.dest_path.mkdir(parents=True, exist_ok=True)
         self.gcs_location = f"gs://{bucket}/{prefix}"
         self.download_success_path = self.dest_path / "DOWNLOAD_SUCCESS"
         self.upload_success_path = self.dest_path / "UPLOAD_SUCCESS"
-        self.check_config = check_config
 
     def _transfer(self):
         location_wildcard = f"{self.gcs_location}/*"
@@ -190,15 +176,7 @@ class FileDownloader(GCSClient):
         self.download_success_path.touch()
 
     def _validate_transfer(self):
-        if not self.download_success_path.exists():
-            return False
-
-        if self.check_config:
-            config_paths = self.dest_path / "CONFIG"
-            if not config_paths.exists():
-                return False
-
-        return True
+        return self.download_success_path.exists()
 
     def delete_source(self):
         """Delete source files from GCS."""

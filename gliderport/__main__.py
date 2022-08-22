@@ -1,6 +1,7 @@
 import click
 
 from gliderport.files import FileUploader
+from gliderport.sky import GliderPort
 from gliderport.vm import Worker
 
 
@@ -14,16 +15,13 @@ from gliderport.vm import Worker
     default=None,
     help="A single file with each row containing a file path to be transferred",
 )
-@click.option("--config_file", required=True, help="Config file to be transferred")
 @click.option("--redo/--no-redo", default=False, help="Redo the upload if the file already exists")
-def upload_files(bucket, prefix, file_paths, file_list_path=None, config_file=None, redo=False):
+def upload_files(bucket, prefix, file_paths, file_list_path=None, redo=False):
     """Upload files to GCS."""
     if file_paths is None and file_list_path is None:
         raise ValueError("Either file_paths or file_list_path must be provided")
 
-    file_uploader = FileUploader(
-        bucket=bucket, prefix=prefix, file_paths=file_paths, file_list_path=file_list_path, config_file=config_file
-    )
+    file_uploader = FileUploader(bucket=bucket, prefix=prefix, file_paths=file_paths, file_list_path=file_list_path)
     file_uploader.transfer(redo=redo)
     return
 
@@ -31,10 +29,23 @@ def upload_files(bucket, prefix, file_paths, file_list_path=None, config_file=No
 @click.command("vm-worker")
 @click.option("--bucket", required=True, help="GCS bucket name")
 @click.option("--prefix", required=True, help="GCS prefix for job config files")
-@click.option("--max_idle_time", required=False, default=600, help="Max idle time in seconds")
+@click.option("--max_idle_time", required=False, default=1200, help="Max idle time in seconds")
 def vm_worker(bucket, prefix, max_idle_time):
     """Run a worker on VM."""
     Worker(job_bucket=bucket, job_prefix=prefix, max_idle_time=max_idle_time)
+    return
+
+
+@click.command("port")
+@click.option("--local_job_dir", required=True, help="Local job directory")
+@click.option("--n_uploader", required=False, default=1, help="Number of uploaders")
+@click.option("--n_worker", required=False, default=16, help="Number of workers")
+@click.option("--max_idle_time", required=False, default=100, help="Max idle time in hours")
+def port(local_job_dir, n_uploader=1, n_worker=16, max_idle_time=100):
+    """Run a glider port."""
+    max_idle_time *= 3600  # hours to seconds
+    gp = GliderPort(local_job_dir=local_job_dir, n_uploader=n_uploader, n_worker=n_worker)
+    gp.run(max_idle_time=max_idle_time)
     return
 
 
@@ -44,9 +55,22 @@ def glider():
     return
 
 
-def main():
+def _glider():
     """Glider port command line interface."""
     glider.add_command(upload_files)
     glider.add_command(vm_worker)
+    glider.add_command(port)
     glider()
+    return
+
+
+@click.group()
+def glider_preset():
+    """Glider port preset command line interface."""
+    return
+
+
+def _glider_preset():
+    """Glider port preset command line interface."""
+    glider_preset()
     return

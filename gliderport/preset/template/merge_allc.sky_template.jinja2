@@ -1,0 +1,17 @@
+resources:
+  cloud: gcp
+  instance_type: {{instance}}
+  region: {{region}}
+
+setup: |
+  conda config --add channels defaults
+  conda config --add channels bioconda
+  conda config --add channels conda-forge
+  conda install -y mamba -n base -c conda-forge
+  mamba install -y anndata pandas pybedtools pyBigWig pysam seaborn xarray
+  pip install allcools
+  pip install git+https://github.com/lhqing/gliderport.git
+
+# this part is added by GliderPort
+# run:
+#   glider vm-worker --bucket bucket --prefix prefix --max_idle_time max_idle_time
