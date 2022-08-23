@@ -1,9 +1,8 @@
 import logging
 import sys
 
-GLIDER_PORT_FORMAT = "%(levelname).1s %(asctime)s %(filename)s:%(lineno)d] %(message)s"
-
 DATE_FORMAT = "%m-%d %H:%M:%S"
+FORMAT = "%(levelname).1s %(asctime)s %(filename)s:%(lineno)d] %(message)s"
 
 
 class NewLineFormatter(logging.Formatter):
@@ -13,7 +12,7 @@ class NewLineFormatter(logging.Formatter):
         logging.Formatter.__init__(self, fmt, datefmt)
 
     def format(self, record):
-        """Format logging."""
+        """Format the record."""
         msg = logging.Formatter.format(self, record)
         if record.message != "":
             parts = msg.split(record.message)
@@ -26,7 +25,7 @@ def init_logger(name: str):
     h = logging.StreamHandler(sys.stdout)
     h.flush = sys.stdout.flush
 
-    fmt = NewLineFormatter(GLIDER_PORT_FORMAT, datefmt=DATE_FORMAT)
+    fmt = NewLineFormatter(FORMAT, datefmt=DATE_FORMAT)
     h.setFormatter(fmt)
 
     logger = logging.getLogger(name)
