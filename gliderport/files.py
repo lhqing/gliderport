@@ -4,6 +4,10 @@ from tempfile import NamedTemporaryFile
 
 from google.cloud import storage
 
+from .log import init_logger
+
+logger = init_logger(__name__)
+
 
 class GCSClient:
     """Get object from GCS."""
@@ -37,11 +41,11 @@ class GCSClient:
     @classmethod
     def _run(cls, cmd):
         try:
-            print("Running command:", cmd)
+            logger.info("Running command:", cmd)
             subprocess.run(cmd, shell=True, capture_output=True, check=True, encoding="utf-8")
         except subprocess.CalledProcessError as e:
-            print(e.output)
-            print(e.stderr)
+            logger.error(e.output)
+            logger.error(e.stderr)
             raise e
 
     @classmethod
@@ -93,7 +97,7 @@ class GCSClient:
             self._transfer()
         else:
             if self._validate_transfer():
-                print("Files already transferred")
+                logger.info("Files already transferred")
                 return
 
         while not self._validate_transfer():
@@ -172,7 +176,7 @@ class FileDownloader(GCSClient):
             pass
 
         # create download success flag
-        print("Creating download success flag")
+        logger.info("Creating download success flag")
         self.download_success_path.touch()
 
     def _validate_transfer(self):

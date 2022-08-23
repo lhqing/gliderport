@@ -14,12 +14,15 @@ from sky import exceptions as sky_exceptions
 
 from .config import read_config
 from .files import FileUploader
+from .log import init_logger
 
 WORKER_REFRESH_CLOCK_INIT = 16
 
+logger = init_logger(__name__)
+
 
 def _check_spot_controller_up():
-    print("Checking sky spot controller status")
+    logger.info("Checking sky spot controller status")
     sky_status = sky_core.status(refresh=True, all=True)
     controller_up = False
     for cluster in sky_status:
@@ -32,7 +35,7 @@ def _check_spot_controller_up():
 
 def _check_spot_status():
     try:
-        print("Checking sky spot jobs status")
+        logger.info("Checking sky spot jobs status")
         sky_spot_status = sky_core.spot_status(refresh=True)
     except sky_exceptions.ClusterNotUpError:
         sky_spot_status = []
@@ -41,13 +44,13 @@ def _check_spot_status():
 
 def _upload(**kwargs):
     job_id = kwargs.pop("job_id")
-    print(f"Uploading job {job_id}")
+    logger.info(f"Uploading job {job_id}")
     FileUploader(**kwargs).transfer()
     return
 
 
 def _null_upload(job_id):
-    print(f"Uploading job {job_id}")
+    logger.info(f"Uploading job {job_id}")
     return
 
 
@@ -231,8 +234,7 @@ class _SpotWorker:
             yaml.dump(worker_config, temp_config_file, default_style="|")
 
             cmd = f"sky spot launch -y -d -n {self.job_name} {temp_config_file.name}"
-
-            print(f"Launching worker {self.worker_id}\n{cmd}")
+            logger.info(f"Launching worker {self.worker_id}\n{cmd}")
             subprocess.run(
                 cmd,
                 shell=True,
@@ -245,7 +247,7 @@ class _SpotWorker:
 
     def check_launch(self):
         if not self.is_terminal:
-            print(f"Worker {self.worker_id} is still working with status {self.status}")
+            logger.info(f"Worker {self.worker_id} is still working with status {self.status}")
             return
         else:
             self.launch()
@@ -348,7 +350,6 @@ class WorkerManager:
             job_id = ".".join(job_config_file_name.split(".")[:-2])
             _cur_worker_jobs[worker_id].add(job_id)
         self._worker_jobs = _cur_worker_jobs
-        print(_cur_worker_jobs)
         return
 
     def _get_most_available_worker(self):
@@ -360,16 +361,14 @@ class WorkerManager:
         # check if job is already on a worker
         for worker_id, jobs in self._worker_jobs.items():
             if job_id in jobs:
-                print(f"Job {job_id} is already on worker {worker_id}")
+                logger.info(f"Job {job_id} is already on worker {worker_id}")
                 return 0
 
         worker_id = self._get_most_available_worker()
-        print(f"Depositing job {job_id} to worker {worker_id}")
+        logger.info(f"Depositing job {job_id} to worker {worker_id}")
 
         gcs_path = f"{self.bucket}/{self.job_config_dir}/worker_{worker_id}/{job_id}.config.yaml"
         # transfer job to remote
-        print(config_path)
-        print(gcs_path)
         self._fs.put_file(config_path, gcs_path)
         # update worker jobs
         self._worker_jobs[worker_id].add(job_id)
@@ -441,10 +440,10 @@ class GliderPort:
         if use_hash is None:
             self.gliderport_hash = _get_hash()
         else:
-            print("Using user provided hash:", use_hash)
+            logger.info("Using user provided hash:", use_hash)
             self.gliderport_hash = use_hash
 
-        print(f"Initializing GliderPort, ID is {self.gliderport_hash}")
+        logger.info(f"Initializing GliderPort, ID is {self.gliderport_hash}")
         self.bucket_name = f"gliderport_temp_{self.gliderport_hash}"
         self._fs = gcsfs.GCSFileSystem()
         if not self._fs.exists(self.bucket_name):
@@ -490,7 +489,7 @@ class GliderPort:
                 flag = self.worker_manager.deposit_job(job_id, config_path)
                 jobs_deposited_in_this_loop += flag
 
-                print(f"{local_config_path} uploaded")
+                logger.info(f"{local_config_path} uploaded")
                 # change local_config_path to uploaded config_path
                 new_path = local_config_path.parent / f"{local_config_path.name}_uploaded"
                 local_config_path.rename(new_path)
@@ -502,7 +501,7 @@ class GliderPort:
             if jobs_deposited_in_this_loop == 0:
                 if idle_time % 1800 == 0:
                     self._update_worker()
-                    print(f"No jobs deposited, sleeping... ({idle_time}/{max_idle_time})")
+                    logger.info(f"No jobs deposited, sleeping... ({idle_time}/{max_idle_time})")
                 idle_time += 60
                 if idle_time > max_idle_time:
                     break

@@ -1,9 +1,12 @@
 import pathlib
 
 import pandas as pd
+from sky.sky_logging import init_logger
 
 from .template import rander_preset_config, rander_preset_sky
 from .utilities import _get_cpu_from_instance_name
+
+logger = init_logger(__name__)
 
 
 def _add_tbi(allc_table):

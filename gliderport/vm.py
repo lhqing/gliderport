@@ -11,6 +11,9 @@ import gcsfs
 
 from .config import read_config
 from .files import FileDownloader, FileUploader
+from .log import init_logger
+
+logger = init_logger(__name__)
 
 
 class Job:
@@ -24,7 +27,7 @@ class Job:
         self._local_prefix = Path(f"{os.environ['HOME']}/sky_workdir/")
         self._local_prefix.mkdir(parents=True, exist_ok=True)
 
-        print(f"Local prefix on VM is {self._local_prefix}")
+        logger.info(f"Local prefix on VM is {self._local_prefix}")
         self.file_downloader = FileDownloader(
             bucket=self.config["input"]["bucket"], prefix=self.config["input"]["prefix"], dest_path=self._local_prefix
         )
@@ -52,13 +55,13 @@ class Job:
 
             # run commands
             try:
-                print(f"Running commands: {f.name}")
+                logger.info(f"Running commands: {f.name}")
                 subprocess.run(
                     f"bash {f.name}", shell=True, capture_output=True, check=True, encoding="utf-8", env=os.environ
                 )
             except subprocess.CalledProcessError as e:
-                print(e.output)
-                print(e.stderr)
+                logger.error(e.output)
+                logger.errnr(e.stderr)
                 raise e
         # change back to previous working directory
         os.chdir(previous_cwd)
@@ -75,7 +78,7 @@ class Job:
 
     def run(self):
         """Run the job."""
-        print(f"Running job with config file {self.config_file}")
+        logger.info(f"Running job with config file {self.config_file}")
 
         # make sure local prefix is empty
         self._clear_local_files()
@@ -119,7 +122,7 @@ class Worker(FileDownloader):
 
     def _mark_job_config_finish(self, job_config):
         """For a successful job, rename the config at local and job bucket."""
-        print(f"Job {job_config.name} done, delete config from job bucket.")
+        logger.info(f"Job {job_config.name} done, delete config from job bucket.")
 
         # local
         job_config.rename(job_config.with_name(job_config.name + "_finish"))
@@ -140,10 +143,10 @@ class Worker(FileDownloader):
                 # no jobs, sleep for a while and retry
                 total_idle_time += 60
                 if total_idle_time > max_idle_time:
-                    print("No job to run, worker quit.")
+                    logger.info("No job to run, worker quit.")
                     break
                 else:
-                    print("No job to run, sleep for 60 seconds.")
+                    logger.info("No job to run, sleep for 60 seconds.")
                     time.sleep(60)
             else:
                 # reset idle time
