@@ -106,7 +106,7 @@ class _JobListener:
         else:
             raise ValueError(f"Unknown input option {input_opt}")
 
-    def upload_and_get_config_path(self):
+    def upload_and_get_config_path(self, gsutil_parallel):
         """Upload all jobs in current local_job_dir."""
         job_configs = self.get_job_configs()
 
@@ -123,6 +123,7 @@ class _JobListener:
                         prefix=prefix,
                         file_paths=file_paths,
                         file_list_path=None,
+                        parallel=gsutil_parallel,
                     )
                     futures[future] = job_id, temp_config_file, local_config_path
                 elif input_opt == "gcs":
@@ -496,7 +497,7 @@ class GliderPort:
         self.worker_manager.launch_workers()
         return
 
-    def run(self, max_idle_hours=100):
+    def run(self, max_idle_hours=100, gsutil_parallel=True):
         """
         Run GliderPort on-prime.
 
@@ -509,7 +510,7 @@ class GliderPort:
         idle_time = 0
         while True:
             jobs_deposited_in_this_loop = 0
-            for job_id, config_path, local_config_path in self.job_listener.upload_and_get_config_path():
+            for job_id, config_path, local_config_path in self.job_listener.upload_and_get_config_path(gsutil_parallel):
                 flag = self.worker_manager.deposit_job(job_id, config_path)
                 jobs_deposited_in_this_loop += flag
 

@@ -49,17 +49,19 @@ class GCSClient:
             raise e
 
     @classmethod
-    def _move_files(cls, file_list, destination_path):
+    def _move_files(cls, file_list, destination_path, parallel):
         # move multiple files to destination
         temp_name = cls._make_temp(file_list)
-        cmd = f'cat "{temp_name}" | gsutil -m cp -r -I "{destination_path}"'
+        m_option = "-m" if parallel else ""
+        cmd = f'cat "{temp_name}" | gsutil {m_option} cp -r -I "{destination_path}"'
         cls._run(cmd)
         return temp_name
 
     @classmethod
-    def _move_file_and_dir(cls, file_path, destination_path):
+    def _move_file_and_dir(cls, file_path, destination_path, parallel):
         # move file to destination
-        cmd = f'gsutil -m cp -r "{file_path}" "{destination_path}"'
+        m_option = "-m" if parallel else ""
+        cmd = f'gsutil {m_option} cp -r "{file_path}" "{destination_path}"'
         cls._run(cmd)
 
     def add_file_paths(self, *args):
@@ -114,7 +116,7 @@ class FileUploader(GCSClient):
     Take a list of files and a destination location (GCS bucket or local path) and move them to the destination folder
     """
 
-    def __init__(self, bucket, prefix, file_paths, file_list_path=None):
+    def __init__(self, bucket, prefix, file_paths, file_list_path=None, parallel=True):
         """
         Initialize file manager class.
 
@@ -140,6 +142,7 @@ class FileUploader(GCSClient):
         self.file_names = [path.name for path in self.file_paths]
 
         self.upload_success_path = f"{self.prefix}/UPLOAD_SUCCESS"
+        self.parallel = parallel
 
     def _validate_transfer(self):
         gcs_paths = self.get_obj_paths()
@@ -150,24 +153,25 @@ class FileUploader(GCSClient):
         return True
 
     def _transfer(self):
-        file_list_temp_path = self._move_files(self.file_paths, self.gcs_location)
-        self._move_file_and_dir(file_list_temp_path, f"{self.gcs_location}/UPLOAD_SUCCESS")
+        file_list_temp_path = self._move_files(self.file_paths, self.gcs_location, parallel=self.parallel)
+        self._move_file_and_dir(file_list_temp_path, f"{self.gcs_location}/UPLOAD_SUCCESS", parallel=self.parallel)
 
 
 class FileDownloader(GCSClient):
     """Download files from GCS."""
 
-    def __init__(self, bucket, prefix, dest_path):
+    def __init__(self, bucket, prefix, dest_path, parallel=True):
         super().__init__(bucket, prefix)
         self.dest_path = Path(dest_path).absolute().resolve()
         self.dest_path.mkdir(parents=True, exist_ok=True)
         self.gcs_location = f"gs://{bucket}/{prefix}"
         self.download_success_path = self.dest_path / "DOWNLOAD_SUCCESS"
         self.upload_success_path = self.dest_path / "UPLOAD_SUCCESS"
+        self.parallel = parallel
 
     def _transfer(self):
         location_wildcard = f"{self.gcs_location}/*"
-        self._move_file_and_dir(location_wildcard, self.dest_path)
+        self._move_file_and_dir(location_wildcard, self.dest_path, parallel=self.parallel)
 
         # delete upload success flag
         try:

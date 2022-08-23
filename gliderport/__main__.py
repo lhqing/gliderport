@@ -16,12 +16,15 @@ from gliderport.vm import Worker
     help="A single file with each row containing a file path to be transferred",
 )
 @click.option("--redo/--no-redo", default=False, help="Redo the upload if the file already exists")
-def upload_files(bucket, prefix, file_paths, file_list_path=None, redo=False):
+@click.option("--parallel/--no-parallel", default=True, help="Use parallel -m option in gsutil")
+def upload_files(bucket, prefix, file_paths, file_list_path=None, redo=False, parallel=True):
     """Upload files to GCS."""
     if file_paths is None and file_list_path is None:
         raise ValueError("Either file_paths or file_list_path must be provided")
 
-    file_uploader = FileUploader(bucket=bucket, prefix=prefix, file_paths=file_paths, file_list_path=file_list_path)
+    file_uploader = FileUploader(
+        bucket=bucket, prefix=prefix, file_paths=file_paths, file_list_path=file_list_path, parallel=parallel
+    )
     file_uploader.transfer(redo=redo)
     return
 
@@ -41,10 +44,11 @@ def vm_worker(bucket, prefix, max_idle_time):
 @click.option("--n_uploader", required=False, default=1, help="Number of uploaders")
 @click.option("--n_worker", required=False, default=16, help="Number of workers")
 @click.option("--max_idle_hours", required=False, default=100, help="Max idle hours for glider port to wait")
-def port(local_job_dir, n_uploader=1, n_worker=16, max_idle_hours=100):
+@click.option("--parallel/--no-parallel", default=True, help="Use parallel -m option in gsutil")
+def port(local_job_dir, n_uploader=1, n_worker=16, max_idle_hours=100, parallel=True):
     """Run a glider port."""
     gp = GliderPort(local_job_dir=local_job_dir, n_uploader=n_uploader, n_worker=n_worker)
-    gp.run(max_idle_hours=max_idle_hours)
+    gp.run(max_idle_hours=max_idle_hours, gsutil_parallel=parallel)
     return
 
 
