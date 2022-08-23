@@ -19,7 +19,12 @@ maintainers = [
 urls.Documentation = "https://gliderport.readthedocs.io/"
 urls.Source = "https://github.com/lhqing/gliderport"
 urls.Home-page = "https://github.com/lhqing/gliderport"
-dependencies = ["pandas", "gcsfs"]
+dependencies = [
+    "pandas",
+    "Jinja2",
+    "click",
+    "gcsfs"
+]
 
 [project.optional-dependencies]
 dev = [

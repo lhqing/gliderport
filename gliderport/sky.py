@@ -17,6 +17,7 @@ from .files import FileUploader
 from .log import init_logger
 
 WORKER_REFRESH_CLOCK_INIT = 16
+GLIDER_PORT_PROJECT_BUCKET = "glider-port"
 
 logger = init_logger(__name__)
 
@@ -54,9 +55,14 @@ def _null_upload(job_id):
     return
 
 
-def _get_hash():
+def _get_hash(add_date=False):
     _hash = random.getrandbits(32)
     _hash = f"{_hash:x}"
+
+    if add_date:
+        # get today's date in yymmdd format
+        today = time.strftime("%y%m%d")
+        _hash = f"{today}-{_hash}"
     return _hash
 
 
@@ -67,9 +73,10 @@ class _JobListener:
     Listen to a directory for new job files, start data uploader and return job_id when file is ready on GCS.
     """
 
-    def __init__(self, local_job_dir, bucket, n_jobs=1):
+    def __init__(self, local_job_dir, port_bucket, port_prefix, n_jobs=1):
         self.local_job_dir = local_job_dir
-        self.bucket = bucket
+        self.port_bucket = port_bucket
+        self.port_prefix = port_prefix
         self.n_jobs = n_jobs
 
     def get_job_configs(self) -> pd.Series:
@@ -84,8 +91,8 @@ class _JobListener:
         if input_opt == "local":
             file_paths = config["input"]["local"]
             # change input mode to gcs, and return new config file
-            config["input"]["bucket"] = self.bucket
-            prefix = f"{job_id}_input"
+            config["input"]["bucket"] = self.port_bucket
+            prefix = f"{self.port_prefix}/{job_id}_input"
             config["input"]["prefix"] = prefix
             del config["input"]["local"]
 
@@ -99,7 +106,7 @@ class _JobListener:
         else:
             raise ValueError(f"Unknown input option {input_opt}")
 
-    def upload_and_get_prefix(self):
+    def upload_and_get_config_path(self):
         """Upload all jobs in current local_job_dir."""
         job_configs = self.get_job_configs()
 
@@ -112,7 +119,7 @@ class _JobListener:
                     future = executor.submit(
                         _upload,
                         job_id=job_id,
-                        bucket=self.bucket,
+                        bucket=self.port_bucket,
                         prefix=prefix,
                         file_paths=file_paths,
                         file_list_path=None,
@@ -275,7 +282,8 @@ class WorkerManager:
 
     def __init__(
         self,
-        job_bucket,
+        port_bucket,
+        port_prefix,
         sky_template_path,
         fs,
         worker_hash,
@@ -289,8 +297,8 @@ class WorkerManager:
 
         Parameters
         ----------
-        job_bucket :
-            bucket name for the spot jobs to monitor job configs
+        port_prefix :
+            port prefix for the spot job to monitor job configs
         sky_template_path :
             path to the sky template file
         fs :
@@ -306,8 +314,8 @@ class WorkerManager:
         spot :
             whether to use spot instance
         """
-        self.bucket = job_bucket
-        self.job_config_dir = "job_config"
+        self.bucket = port_bucket
+        self.job_config_dir = f"{port_prefix}/job_config"
         self.n_workers = n_workers
         self.alive_workers = set()
         self._fs = fs
@@ -350,6 +358,11 @@ class WorkerManager:
             job_id = ".".join(job_config_file_name.split(".")[:-2])
             _cur_worker_jobs[worker_id].add(job_id)
         self._worker_jobs = _cur_worker_jobs
+
+        for k, v in self._worker_jobs.items():
+            n = len(v)
+            if n > 0:
+                logger.info(f"Worker {k} has {len(v)} jobs")
         return
 
     def _get_most_available_worker(self):
@@ -438,24 +451,35 @@ class GliderPort:
         """
         self.local_job_dir = Path(local_job_dir).absolute().resolve()
         if use_hash is None:
-            self.gliderport_hash = _get_hash()
+            self.gliderport_hash = _get_hash(add_date=True)
         else:
             logger.info("Using user provided hash:", use_hash)
             self.gliderport_hash = use_hash
 
         logger.info(f"Initializing GliderPort, ID is {self.gliderport_hash}")
-        self.bucket_name = f"gliderport_temp_{self.gliderport_hash}"
+        self.bucket_name = f"{GLIDER_PORT_PROJECT_BUCKET}"
+        self.port_prefix = f"Port-{self.gliderport_hash}"
         self._fs = gcsfs.GCSFileSystem()
-        if not self._fs.exists(self.bucket_name):
-            self._fs.mkdir(self.bucket_name)
+        if not self._fs.exists(GLIDER_PORT_PROJECT_BUCKET):
+            raise FileNotFoundError(
+                f"Bucket {GLIDER_PORT_PROJECT_BUCKET} not found, "
+                "please create this bucket for your project,"
+                "set the region and permission properly."
+            )
 
-        self.job_listener = _JobListener(local_job_dir=self.local_job_dir, bucket=self.bucket_name, n_jobs=n_uploader)
+        self.job_listener = _JobListener(
+            local_job_dir=self.local_job_dir,
+            port_bucket=self.bucket_name,
+            n_jobs=n_uploader,
+            port_prefix=self.port_prefix,
+        )
         self.job_config_prefix = "job_config"
 
         self._worker_refresh_clock = WORKER_REFRESH_CLOCK_INIT
         _sky_template = self.local_job_dir / "SKY_TEMPLATE.yaml"
         self.worker_manager = WorkerManager(
-            job_bucket=self.bucket_name,
+            port_bucket=self.bucket_name,
+            port_prefix=self.port_prefix,
             n_workers=n_worker,
             sky_template_path=_sky_template,
             spot=spot,
@@ -485,7 +509,7 @@ class GliderPort:
         idle_time = 0
         while True:
             jobs_deposited_in_this_loop = 0
-            for job_id, config_path, local_config_path in self.job_listener.upload_and_get_prefix():
+            for job_id, config_path, local_config_path in self.job_listener.upload_and_get_config_path():
                 flag = self.worker_manager.deposit_job(job_id, config_path)
                 jobs_deposited_in_this_loop += flag
 
@@ -510,9 +534,4 @@ class GliderPort:
                 self._update_worker()
                 # Reset idle time if jobs are deposited.
                 idle_time = 0
-        return
-
-    def _delete_bucket(self):
-        """Delete bucket."""
-        self._fs.rm(self.bucket_name)
         return
