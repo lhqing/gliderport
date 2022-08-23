@@ -454,7 +454,7 @@ class GliderPort:
         if use_hash is None:
             self.gliderport_hash = _get_hash(add_date=True)
         else:
-            logger.info("Using user provided hash:", use_hash)
+            logger.info(f"Using user provided hash: {use_hash}")
             self.gliderport_hash = use_hash
 
         logger.info(f"Initializing GliderPort, ID is {self.gliderport_hash}")

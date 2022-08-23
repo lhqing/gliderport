@@ -41,7 +41,7 @@ class GCSClient:
     @classmethod
     def _run(cls, cmd):
         try:
-            logger.info("Running command:", cmd)
+            logger.info(f"Running command:\n{cmd}")
             subprocess.run(cmd, shell=True, capture_output=True, check=True, encoding="utf-8")
         except subprocess.CalledProcessError as e:
             logger.error(e.output)
