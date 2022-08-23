@@ -61,7 +61,7 @@ class Job:
                 )
             except subprocess.CalledProcessError as e:
                 logger.error(e.output)
-                logger.errnr(e.stderr)
+                logger.error(e.stderr)
                 raise e
         # change back to previous working directory
         os.chdir(previous_cwd)
