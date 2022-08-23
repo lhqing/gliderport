@@ -1,7 +1,7 @@
 import logging
 import sys
 
-GLIDER_PORT_FORMAT = "GLIDER | %(asctime)s %(levelname)s %(name)s %(message)s"
+GLIDER_PORT_FORMAT = "%(asctime)s %(levelname)s %(name)s %(message)s"
 
 DATE_FORMAT = "%m-%d %H:%M:%S"
 
