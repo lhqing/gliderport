@@ -372,6 +372,8 @@ class WorkerManager:
 
     def deposit_job(self, job_id, config_path):
         """Deposit job to worker."""
+        logger.info(f"Received job {job_id} and config path at {config_path}")
+
         # check if job is already on a worker
         for worker_id, jobs in self._worker_jobs.items():
             if job_id in jobs:
@@ -386,6 +388,7 @@ class WorkerManager:
         self._fs.put_file(config_path, gcs_path)
         # update worker jobs
         self._worker_jobs[worker_id].add(job_id)
+        logger.info(f"Job {job_id} deposited to worker {worker_id}")
         return 1
 
     def _update_spot_worker_status(self):
@@ -511,6 +514,11 @@ class GliderPort:
         while True:
             jobs_deposited_in_this_loop = 0
             for job_id, config_path, local_config_path in self.job_listener.upload_and_get_config_path(gsutil_parallel):
+                logger.info(
+                    f"GliderPort - Run: Depositing job {job_id}, "
+                    f"config path {config_path}, "
+                    f"local config path {local_config_path}"
+                )
                 flag = self.worker_manager.deposit_job(job_id, config_path)
                 jobs_deposited_in_this_loop += flag
 
