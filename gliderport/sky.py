@@ -479,7 +479,7 @@ class GliderPort:
         )
         self.job_config_prefix = "job_config"
 
-        self._worker_refresh_clock = WORKER_REFRESH_CLOCK_INIT
+        self._worker_refresh_clock = 0
         _sky_template = self.local_job_dir / "SKY_TEMPLATE.yaml"
         self.worker_manager = WorkerManager(
             port_bucket=self.bucket_name,
