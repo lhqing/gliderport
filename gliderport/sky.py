@@ -504,7 +504,8 @@ class GliderPort:
         Raise an exception if timeout is reached.
         """
         worker_id = self.worker_manager.get_most_available_worker()
-        if self.worker_manager.worker_jobs[worker_id] < max_queue_jobs_per_worker:
+        _min_jobs = len(self.worker_manager.worker_jobs[worker_id])
+        if _min_jobs < max_queue_jobs_per_worker:
             # not reaching max queue jobs per worker, do not pause
             return
 
