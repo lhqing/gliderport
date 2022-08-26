@@ -82,13 +82,14 @@ class Job:
 
         success_flag = self._run(log_prefix=log_prefix, retry=retry, check=check)
 
-        self.file_uploader.transfer()
+        if success_flag:
+            self.file_uploader.transfer()
 
         # clean up local files for the next job
         self._clear_local_files()
 
-        # delete input from GCS if flag is set
-        if self._delete_input_from_gcs_flag:
+        # delete input from GCS if flag is set and the job was successful
+        if success_flag and self._delete_input_from_gcs_flag:
             self.file_downloader.delete_source()
         return success_flag
 
