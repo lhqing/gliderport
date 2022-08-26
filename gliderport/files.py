@@ -1,10 +1,10 @@
-import subprocess
 from pathlib import Path
 from tempfile import NamedTemporaryFile
 
 from google.cloud import storage
 
 from .log import init_logger
+from .utils import CommandRunner
 
 logger = init_logger(__name__)
 
@@ -41,18 +41,8 @@ class GCSClient:
     @classmethod
     def _run(cls, cmd, retry=3):
         """Run a command."""
-        tried = 0
-        while True:
-            try:
-                logger.info(f"Running command:\n{cmd}")
-                subprocess.run(cmd, shell=True, capture_output=True, check=True, encoding="utf-8")
-                return
-            except subprocess.CalledProcessError as e:
-                tried += 1
-                if tried > retry:
-                    logger.error(e.output)
-                    logger.error(e.stderr)
-                    raise e
+        flag = CommandRunner(cmd, log_prefix=None, check=True, retry=retry, env=None).run()
+        return flag
 
     @classmethod
     def _move_files(cls, file_list, destination_path, parallel):
@@ -69,6 +59,7 @@ class GCSClient:
         m_option = "-m" if parallel else ""
         cmd = f'gsutil {m_option} cp -r "{file_path}" "{destination_path}"'
         cls._run(cmd)
+        return
 
     def add_file_paths(self, *args):
         """Add file paths to list."""

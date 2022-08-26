@@ -11,9 +11,9 @@ import yaml
 from sky import core as sky_core
 from sky import exceptions as sky_exceptions
 
-from .config import read_config
 from .files import FileUploader
 from .log import init_logger
+from .utils import read_config
 
 WORKER_REFRESH_CLOCK_INIT = 16
 GLIDER_PORT_PROJECT_BUCKET = "glider-port"
@@ -512,8 +512,8 @@ class GliderPort:
         timeout = 3600 * timeout_hour
         while True:
             logger.info(f"Job upload paused because all workers have >= {max_queue_jobs_per_worker} jobs to do.")
-            time.sleep(120)
-            timeout -= 120
+            time.sleep(300)
+            timeout -= 300
             self._worker_refresh_clock -= 1
             logger.info(f"Refresh clock: {self._worker_refresh_clock}, will refresh worker when reach 0.")
             if self._worker_refresh_clock <= 0:
@@ -525,7 +525,7 @@ class GliderPort:
                     "Please check your job queue and sky status, or set timeout_hour longer."
                 )
 
-    def run(self, max_idle_hours=100, gsutil_parallel=True, max_queue_jobs_per_worker=10):
+    def run(self, max_idle_hours=100, gsutil_parallel=True, max_queue_jobs_per_worker=5):
         """
         Run GliderPort on-prime.
 
@@ -562,7 +562,7 @@ class GliderPort:
                 )
 
             if jobs_deposited_in_this_loop == 0:
-                if idle_time % 1800 == 0:
+                if idle_time % 3600 == 0:
                     self._update_worker()
                     logger.info(f"No jobs deposited, sleeping... ({idle_time}/{max_idle_time})")
                 idle_time += 60
