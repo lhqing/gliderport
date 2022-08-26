@@ -2,7 +2,6 @@ import enum
 import random
 import subprocess
 import time
-from concurrent.futures import ProcessPoolExecutor, as_completed
 from pathlib import Path
 from tempfile import NamedTemporaryFile
 
@@ -110,32 +109,24 @@ class _JobListener:
         """Upload all jobs in current local_job_dir."""
         job_configs = self.get_job_configs()
 
-        with ProcessPoolExecutor(self.n_jobs) as executor:
-            futures = {}
-            for job_id, local_config_path in job_configs.items():
-                input_opt, *values = self._parse_job_config(job_id, local_config_path)
-                if input_opt == "local":
-                    file_paths, prefix, temp_config_file = values
-                    future = executor.submit(
-                        _upload,
-                        job_id=job_id,
-                        bucket=self.port_bucket,
-                        prefix=prefix,
-                        file_paths=file_paths,
-                        file_list_path=None,
-                        parallel=gsutil_parallel,
-                    )
-                    futures[future] = job_id, temp_config_file, local_config_path
-                elif input_opt == "gcs":
-                    future = executor.submit(_null_upload, job_id=job_id)
-                    futures[future] = job_id, local_config_path, local_config_path
-                else:
-                    raise ValueError(f"Unknown input option {input_opt}")
-
-            for future in as_completed(futures):
-                job_id, config_path, local_config_path = futures[future]
-                future.result()
-                yield job_id, config_path, local_config_path
+        for job_id, local_config_path in job_configs.items():
+            input_opt, *values = self._parse_job_config(job_id, local_config_path)
+            if input_opt == "local":
+                file_paths, prefix, temp_config_file = values
+                _upload(
+                    job_id=job_id,
+                    bucket=self.port_bucket,
+                    prefix=prefix,
+                    file_paths=file_paths,
+                    file_list_path=None,
+                    parallel=gsutil_parallel,
+                )
+            elif input_opt == "gcs":
+                temp_config_file = local_config_path
+                _null_upload(job_id=job_id)
+            else:
+                raise ValueError(f"Unknown input option {input_opt}")
+            yield job_id, temp_config_file, local_config_path
 
 
 class NullStatus(enum.Enum):
@@ -524,7 +515,7 @@ class GliderPort:
             timeout -= 120
             self._worker_refresh_clock -= 1
             logger.info(f"Refresh clock: {self._worker_refresh_clock}, will refresh worker when reach 0.")
-            if self._worker_refresh_clock == 0:
+            if self._worker_refresh_clock <= 0:
                 self._update_worker()
             if timeout < 0:
                 raise TimeoutError(
@@ -562,7 +553,7 @@ class GliderPort:
 
                 self._worker_refresh_clock -= 1
                 logger.info(f"Refresh clock: {self._worker_refresh_clock}, will refresh worker when reach 0.")
-                if self._worker_refresh_clock == 0:
+                if self._worker_refresh_clock <= 0:
                     self._update_worker()
 
                 self._pause_if_too_many_jobs(
