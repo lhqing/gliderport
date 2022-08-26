@@ -495,6 +495,15 @@ class GliderPort:
         self.worker_manager.launch_workers()
         return
 
+    def _check_min_jobs(self, max_queue_jobs_per_worker):
+        """Check if there are enough jobs to start workers."""
+        worker_id = self.worker_manager.get_most_available_worker()
+        _min_jobs = len(self.worker_manager.worker_jobs[worker_id])
+        if _min_jobs < max_queue_jobs_per_worker:
+            return True
+        else:
+            return False
+
     def _pause_if_too_many_jobs(self, max_queue_jobs_per_worker=5, timeout_hour=4):
         """
         Pause if too many jobs in the queue.
@@ -504,9 +513,7 @@ class GliderPort:
 
         Raise an exception if timeout is reached.
         """
-        worker_id = self.worker_manager.get_most_available_worker()
-        _min_jobs = len(self.worker_manager.worker_jobs[worker_id])
-        if _min_jobs < max_queue_jobs_per_worker:
+        if self._check_min_jobs(max_queue_jobs_per_worker):
             # not reaching max queue jobs per worker, do not pause
             return
 
@@ -516,15 +523,18 @@ class GliderPort:
             time.sleep(300)
             timeout -= 300
             self._worker_refresh_clock -= 1
-            logger.info(f"Refresh clock: {self._worker_refresh_clock}, will refresh worker when reach 0.")
+            logger.debug(f"Refresh clock: {self._worker_refresh_clock}, will refresh worker when <= 0.")
             if self._worker_refresh_clock <= 0:
                 self._update_worker()
+            if self._check_min_jobs(max_queue_jobs_per_worker):
+                break
             if timeout < 0:
                 raise TimeoutError(
                     f"Job upload paused for {timeout_hour} hours, "
                     f"all workers still have more than {max_queue_jobs_per_worker} jobs to do. "
                     "Please check your job queue and sky status, or set timeout_hour longer."
                 )
+        return
 
     def run(self, max_idle_hours=100, gsutil_parallel=True, max_queue_jobs_per_worker=5):
         """
@@ -534,13 +544,17 @@ class GliderPort:
         ----------
         max_idle_hours :
             max idle hours for glider port to wait
+        gsutil_parallel :
+            whether to use gsutil parallel option "-m"
+        max_queue_jobs_per_worker :
+            max number of jobs per worker in queue
         """
         max_idle_time = max_idle_hours * 3600
         idle_time = 0
         while True:
             jobs_deposited_in_this_loop = 0
             for job_id, config_path, local_config_path in self.job_listener.upload_and_get_config_path(gsutil_parallel):
-                logger.info(
+                logger.debug(
                     f"GliderPort - Run: Depositing job {job_id}, "
                     f"config path {config_path}, "
                     f"local config path {local_config_path}"
@@ -554,7 +568,7 @@ class GliderPort:
                 local_config_path.rename(new_path)
 
                 self._worker_refresh_clock -= 1
-                logger.info(f"Refresh clock: {self._worker_refresh_clock}, will refresh worker when reach 0.")
+                logger.debug(f"Refresh clock: {self._worker_refresh_clock}, will refresh worker when <= 0.")
                 if self._worker_refresh_clock <= 0:
                     self._update_worker()
 

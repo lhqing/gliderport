@@ -7,9 +7,9 @@ import click
 @click.option("--job_dir", required=True, help="Path to local job directory, will create if not exists.")
 @click.option("--output_bucket", required=True, help="Bucket name for output files.")
 @click.option("--output_prefix", required=True, help="Prefix for output files.")
-@click.option("--merge_allc_cpu", required=True, help="CPU for merge allc job.")
-@click.option("--instance", required=False, default="n2d-highcpu-48", help="VM instance name.")
-@click.option("--region", required=True, default="us-west1", help="VM region.")
+@click.option("--merge_allc_cpu", required=False, default=48, help="CPU for merge allc job.")
+@click.option("--instance", required=False, default="n2d-standard-48", help="VM instance name.")
+@click.option("--region", required=False, default="us-west1", help="VM region.")
 @click.option("--port_idle_hours", required=False, default=100, help="Port idle hours.")
 @click.option("--use_hash", required=False, default=None, help="Use a fixed hash for the glider port.")
 @click.option("--spot/--no-spot", default=True, help="Use spot VMs.")
@@ -19,8 +19,8 @@ def merge_allc(
     job_dir,
     output_bucket,
     output_prefix,
-    merge_allc_cpu,
-    instance="n2d-highcpu-48",
+    merge_allc_cpu=48,
+    instance="n2d-standard-48",
     region="us-west1",
     port_idle_hours=100,
     use_hash=None,
@@ -58,6 +58,12 @@ def merge_allc(
     return
 
 
+@click.command("mapping")
+def mapping():
+    """Mapping command line interface."""
+    return
+
+
 @click.group()
 def glider_preset():
     """Glider port preset command line interface."""
@@ -67,5 +73,6 @@ def glider_preset():
 def _glider_preset():
     """Glider port preset command line interface."""
     glider_preset.add_command(merge_allc)
+    glider_preset.add_command(mapping)
     glider_preset()
     return
