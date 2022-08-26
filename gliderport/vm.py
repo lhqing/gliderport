@@ -2,16 +2,15 @@
 
 import os
 import shutil
-import subprocess
 import time
 from pathlib import Path
 from tempfile import NamedTemporaryFile, TemporaryDirectory
 
 import gcsfs
 
-from .config import read_config
 from .files import FileDownloader, FileUploader
 from .log import init_logger
+from .utils import CommandRunner, read_config
 
 logger = init_logger(__name__)
 
@@ -39,7 +38,7 @@ class Job:
         )
         self.run_commands = self.config["run"]
 
-    def _run(self):
+    def _run(self, log_prefix, retry=2, check=False):
         commands = self.run_commands
 
         if isinstance(commands, str):
@@ -54,18 +53,11 @@ class Job:
             f.flush()
 
             # run commands
-            try:
-                logger.info(f"Running commands: {f.name}")
-                subprocess.run(
-                    f"bash {f.name}", shell=True, capture_output=True, check=True, encoding="utf-8", env=os.environ
-                )
-            except subprocess.CalledProcessError as e:
-                logger.error(e.output)
-                logger.error(e.stderr)
-                raise e
+            cmd = f"bash {f.name}"
+            success_flag = CommandRunner(retry=retry, command=cmd, log_prefix=log_prefix, check=check).run()
         # change back to previous working directory
         os.chdir(previous_cwd)
-        return
+        return success_flag
 
     def _clear_local_files(self):
         # clean up local files
@@ -76,8 +68,8 @@ class Job:
             except OSError:
                 os.remove(path)
 
-    def run(self):
-        """Run the job."""
+    def run(self, log_prefix=None, retry=2, check=False):
+        """Run the job, return True if successful."""
         logger.info(f"Running job with config file {self.config_file}")
 
         # make sure local prefix is empty
@@ -88,7 +80,7 @@ class Job:
         assert self.file_downloader.download_success_path.exists(), "Download success flag does not exist"
         self.file_downloader.download_success_path.unlink()
 
-        self._run()
+        success_flag = self._run(log_prefix=log_prefix, retry=retry, check=check)
 
         self.file_uploader.transfer()
 
@@ -98,7 +90,7 @@ class Job:
         # delete input from GCS if flag is set
         if self._delete_input_from_gcs_flag:
             self.file_downloader.delete_source()
-        return
+        return success_flag
 
 
 class Worker(FileDownloader):
@@ -120,19 +112,19 @@ class Worker(FileDownloader):
         self.transfer(redo=True)  # redo because we want to ignore download flag and get new configs
         self.job_configs = list(self.local_config_dir.glob("*.yaml"))
 
-    def _mark_job_config_finish(self, job_config):
+    def _mark_job_config(self, job_config, suffix):
         """For a successful job, rename the config at local and job bucket."""
         logger.info(f"Job {job_config.name} done, delete config from job bucket.")
 
         # local
-        job_config.rename(job_config.with_name(job_config.name + "_finish"))
+        job_config.rename(job_config.with_name(job_config.name + suffix))
 
         # gcs
         gcs_path = f"{self.bucket.name}/{self.prefix}/{job_config.name}"
-        self._fs.rename(gcs_path, gcs_path + "_finish")
+        self._fs.rename(gcs_path, gcs_path + suffix)
         return
 
-    def run(self, max_idle_time):
+    def run(self, max_idle_time, retry=2):
         """Run the jobs in the job bucket."""
         total_idle_time = 0
         while True:
@@ -155,7 +147,12 @@ class Worker(FileDownloader):
                 # run jobs and delete configs when done
                 for job_config in self.job_configs:
                     # run job
-                    Job(job_config).run()
-                    # delete job config from job bucket
-                    self._mark_job_config_finish(job_config)
+                    log_prefix = f"gs://{self.bucket.name}/{self.prefix}/{job_config.name}"
+                    success_flag = Job(job_config).run(log_prefix=log_prefix, retry=retry, check=False)
+
+                    # rename job config in job bucket, the same config will not be run again
+                    if success_flag:
+                        self._mark_job_config(job_config, suffix="_success")
+                    else:
+                        self._mark_job_config(job_config, suffix="_fail")
         return
