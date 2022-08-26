@@ -43,8 +43,7 @@ def _check_spot_status():
 
 
 def _upload(**kwargs):
-    job_id = kwargs.pop("job_id")
-    logger.info(f"Uploading job {job_id}")
+    kwargs.pop("job_id")
     FileUploader(**kwargs).transfer()
     return
 
@@ -109,8 +108,10 @@ class _JobListener:
         """Upload all jobs in current local_job_dir."""
         job_configs = self.get_job_configs()
 
-        for job_id, local_config_path in job_configs.items():
+        total_jobs = len(job_configs)
+        for i, (job_id, local_config_path) in enumerate(job_configs.items()):
             input_opt, *values = self._parse_job_config(job_id, local_config_path)
+            logger.info(f"Uploading job {job_id} - {i+1}/{total_jobs} jobs")
             if input_opt == "local":
                 file_paths, prefix, temp_config_file = values
                 _upload(
