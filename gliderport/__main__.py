@@ -44,10 +44,11 @@ def vm_worker(bucket, prefix, max_idle_time):
 @click.option("--n_uploader", required=False, default=1, help="Number of uploaders")
 @click.option("--n_worker", required=False, default=16, help="Number of workers")
 @click.option("--max_idle_hours", required=False, default=100, help="Max idle hours for glider port to wait")
+@click.option("--use_hash", required=False, default=None, help="Unique port and worker hash for the spot job name")
 @click.option("--parallel/--no-parallel", default=True, help="Use parallel -m option in gsutil")
-def port(local_job_dir, n_uploader=1, n_worker=16, max_idle_hours=100, parallel=True):
+def port(local_job_dir, n_uploader=1, n_worker=16, max_idle_hours=100, use_hash=None, parallel=True):
     """Run a glider port on-prem."""
-    gp = GliderPort(local_job_dir=local_job_dir, n_uploader=n_uploader, n_worker=n_worker)
+    gp = GliderPort(local_job_dir=local_job_dir, n_uploader=n_uploader, n_worker=n_worker, use_hash=use_hash)
     gp.run(max_idle_hours=max_idle_hours, gsutil_parallel=parallel)
     return
 
