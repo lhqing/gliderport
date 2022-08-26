@@ -39,14 +39,20 @@ class GCSClient:
         return fp.name
 
     @classmethod
-    def _run(cls, cmd):
-        try:
-            logger.info(f"Running command:\n{cmd}")
-            subprocess.run(cmd, shell=True, capture_output=True, check=True, encoding="utf-8")
-        except subprocess.CalledProcessError as e:
-            logger.error(e.output)
-            logger.error(e.stderr)
-            raise e
+    def _run(cls, cmd, retry=3):
+        """Run a command."""
+        tried = 0
+        while True:
+            try:
+                logger.info(f"Running command:\n{cmd}")
+                subprocess.run(cmd, shell=True, capture_output=True, check=True, encoding="utf-8")
+                return
+            except subprocess.CalledProcessError as e:
+                tried += 1
+                if tried > retry:
+                    logger.error(e.output)
+                    logger.error(e.stderr)
+                    raise e
 
     @classmethod
     def _move_files(cls, file_list, destination_path, parallel):

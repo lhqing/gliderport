@@ -329,7 +329,7 @@ class WorkerManager:
         self._worker_launch_timeout = launch_timeout
         self._workers = {}
         self._init_workers(spot)
-        self._worker_jobs = {}
+        self.worker_jobs = {}
         self._update_remote_worker_jobs()
 
     def _init_workers(self, spot):
@@ -358,36 +358,39 @@ class WorkerManager:
             worker_id = int(worker.split("_")[-1])
             job_id = ".".join(job_config_file_name.split(".")[:-2])
             _cur_worker_jobs[worker_id].add(job_id)
-        self._worker_jobs = _cur_worker_jobs
+        self.worker_jobs = _cur_worker_jobs
 
-        for k, v in self._worker_jobs.items():
+        total = 0
+        for k, v in self.worker_jobs.items():
             n = len(v)
+            total += n
             if n > 0:
                 logger.info(f"Worker {k} has {len(v)} jobs")
+        logger.info(f"Total {total} jobs")
         return
 
-    def _get_most_available_worker(self):
+    def get_most_available_worker(self):
         """Get the worker id with the least jobs."""
-        return sorted(self._worker_jobs.items(), key=lambda i: len(i[1]))[0][0]
+        return sorted(self.worker_jobs.items(), key=lambda i: len(i[1]))[0][0]
 
     def deposit_job(self, job_id, config_path):
         """Deposit job to worker."""
         logger.info(f"Received job {job_id} and config path at {config_path}")
 
         # check if job is already on a worker
-        for worker_id, jobs in self._worker_jobs.items():
+        for worker_id, jobs in self.worker_jobs.items():
             if job_id in jobs:
                 logger.info(f"Job {job_id} is already on worker {worker_id}")
                 return 0
 
-        worker_id = self._get_most_available_worker()
+        worker_id = self.get_most_available_worker()
         logger.info(f"Depositing job {job_id} to worker {worker_id}")
 
         gcs_path = f"{self.bucket}/{self.job_config_dir}/worker_{worker_id}/{job_id}.config.yaml"
         # transfer job to remote
         self._fs.put_file(config_path, gcs_path)
         # update worker jobs
-        self._worker_jobs[worker_id].add(job_id)
+        self.worker_jobs[worker_id].add(job_id)
         logger.info(f"Job {job_id} deposited to worker {worker_id}")
         return 1
 
@@ -411,7 +414,7 @@ class WorkerManager:
         self._update_spot_worker_status()
 
         # if worker has jobs to do, launch it
-        for worker_id, jobs in self._worker_jobs.items():
+        for worker_id, jobs in self.worker_jobs.items():
             n_jobs = len(jobs)
             if n_jobs == 0:
                 continue
@@ -500,7 +503,37 @@ class GliderPort:
         self.worker_manager.launch_workers()
         return
 
-    def run(self, max_idle_hours=100, gsutil_parallel=True):
+    def _pause_if_too_many_jobs(self, max_queue_jobs_per_worker=5, timeout_hour=4):
+        """
+        Pause if too many jobs in the queue.
+
+        If all workers have more than max_queue_jobs_per_worker jobs to do, pause for a while.
+        Release if any worker has less than max_queue_jobs_per_worker jobs to do.
+
+        Raise an exception if timeout is reached.
+        """
+        worker_id = self.worker_manager.get_most_available_worker()
+        if self.worker_manager.worker_jobs[worker_id] < max_queue_jobs_per_worker:
+            # not reaching max queue jobs per worker, do not pause
+            return
+
+        timeout = 3600 * timeout_hour
+        while True:
+            logger.info(f"Job upload paused because all workers have >= {max_queue_jobs_per_worker} jobs to do.")
+            time.sleep(120)
+            timeout -= 120
+            self._worker_refresh_clock -= 1
+            logger.info(f"Refresh clock: {self._worker_refresh_clock}, will refresh worker when reach 0.")
+            if self._worker_refresh_clock == 0:
+                self._update_worker()
+            if timeout < 0:
+                raise TimeoutError(
+                    f"Job upload paused for {timeout_hour} hours, "
+                    f"all workers still have more than {max_queue_jobs_per_worker} jobs to do. "
+                    "Please check your job queue and sky status, or set timeout_hour longer."
+                )
+
+    def run(self, max_idle_hours=100, gsutil_parallel=True, max_queue_jobs_per_worker=10):
         """
         Run GliderPort on-prime.
 
@@ -528,8 +561,13 @@ class GliderPort:
                 local_config_path.rename(new_path)
 
                 self._worker_refresh_clock -= 1
+                logger.info(f"Refresh clock: {self._worker_refresh_clock}, will refresh worker when reach 0.")
                 if self._worker_refresh_clock == 0:
                     self._update_worker()
+
+                self._pause_if_too_many_jobs(
+                    max_queue_jobs_per_worker=max_queue_jobs_per_worker, timeout_hour=max_idle_hours
+                )
 
             if jobs_deposited_in_this_loop == 0:
                 if idle_time % 1800 == 0:
@@ -537,6 +575,7 @@ class GliderPort:
                     logger.info(f"No jobs deposited, sleeping... ({idle_time}/{max_idle_time})")
                 idle_time += 60
                 if idle_time > max_idle_time:
+                    logger.info(f"GliderPort waited {max_idle_hours} hours, there is still no work to do, quitting...")
                     break
                 time.sleep(60)
             else:

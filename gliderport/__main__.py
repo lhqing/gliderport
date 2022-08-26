@@ -18,7 +18,7 @@ from gliderport.vm import Worker
 @click.option("--redo/--no-redo", default=False, help="Redo the upload if the file already exists")
 @click.option("--parallel/--no-parallel", default=True, help="Use parallel -m option in gsutil")
 def upload_files(bucket, prefix, file_paths, file_list_path=None, redo=False, parallel=True):
-    """Upload files to GCS."""
+    """Upload files to cloud."""
     if file_paths is None and file_list_path is None:
         raise ValueError("Either file_paths or file_list_path must be provided")
 
@@ -46,7 +46,7 @@ def vm_worker(bucket, prefix, max_idle_time):
 @click.option("--max_idle_hours", required=False, default=100, help="Max idle hours for glider port to wait")
 @click.option("--parallel/--no-parallel", default=True, help="Use parallel -m option in gsutil")
 def port(local_job_dir, n_uploader=1, n_worker=16, max_idle_hours=100, parallel=True):
-    """Run a glider port."""
+    """Run a glider port on-prem."""
     gp = GliderPort(local_job_dir=local_job_dir, n_uploader=n_uploader, n_worker=n_worker)
     gp.run(max_idle_hours=max_idle_hours, gsutil_parallel=parallel)
     return
