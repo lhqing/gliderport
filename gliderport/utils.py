@@ -41,7 +41,12 @@ def read_config(config_file, input_mode=None):
     assert "bucket" in config["output"], f"Output bucket is not defined in config.\n{config}"
     assert "prefix" in config["output"], f"Output prefix is not defined in config.\n{config}"
 
-    assert "run" in config, f"Worker is not defined in config.\n{config}"
+    flag = False
+    for key in ["run", "python"]:
+        if key in config:
+            flag = True
+    if not flag:
+        raise ValueError(f"Run is not defined in config.\n{config}")
     return config, input_opt
 
 

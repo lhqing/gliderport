@@ -36,7 +36,15 @@ class Job:
             prefix=self.config["output"]["prefix"],
             file_paths=self._local_prefix,
         )
-        self.run_commands = self.config["run"]
+
+        if "run" in self.config:
+            self.runner = "bash"
+            self.run_commands = self.config["run"]
+        elif "python" in self.config:
+            self.runner = "python"
+            self.run_commands = self.config["python"]
+        else:
+            raise ValueError(f"No run or python command found in config file {self.config_file}")
 
     def _run(self, log_prefix, retry=2, check=False):
         commands = self.run_commands
@@ -53,7 +61,7 @@ class Job:
             f.flush()
 
             # run commands
-            cmd = f"bash {f.name}"
+            cmd = f"{self.runner} {f.name}"
             success_flag = CommandRunner(retry=retry, command=cmd, log_prefix=log_prefix, check=check).run()
         # change back to previous working directory
         os.chdir(previous_cwd)

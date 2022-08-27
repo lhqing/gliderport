@@ -474,7 +474,7 @@ class GliderPort:
         )
         self.job_config_prefix = "job_config"
 
-        self._worker_refresh_clock = 0
+        self._worker_refresh_clock = n_worker
         _sky_template = self.local_job_dir / "SKY_TEMPLATE.yaml"
         self.worker_manager = WorkerManager(
             port_bucket=self.bucket_name,
@@ -504,7 +504,7 @@ class GliderPort:
         else:
             return False
 
-    def _pause_if_too_many_jobs(self, max_queue_jobs_per_worker=5, timeout_hour=4):
+    def _pause_if_too_many_jobs(self, max_queue_jobs_per_worker=15, timeout_hour=4):
         """
         Pause if too many jobs in the queue.
 
@@ -520,8 +520,8 @@ class GliderPort:
         timeout = 3600 * timeout_hour
         while True:
             logger.info(f"Job upload paused because all workers have >= {max_queue_jobs_per_worker} jobs to do.")
-            time.sleep(300)
-            timeout -= 300
+            time.sleep(600)
+            timeout -= 600
             self._worker_refresh_clock -= 1
             logger.debug(f"Refresh clock: {self._worker_refresh_clock}, will refresh worker when <= 0.")
             if self._worker_refresh_clock <= 0:
@@ -536,7 +536,7 @@ class GliderPort:
                 )
         return
 
-    def run(self, max_idle_hours=100, gsutil_parallel=True, max_queue_jobs_per_worker=5):
+    def run(self, max_idle_hours=100, gsutil_parallel=True, max_queue_jobs_per_worker=15):
         """
         Run GliderPort on-prime.
 
@@ -577,7 +577,7 @@ class GliderPort:
                 )
 
             if jobs_deposited_in_this_loop == 0:
-                if idle_time % 3600 == 0:
+                if idle_time % 7200 == 0:
                     self._update_worker()
                     logger.info(f"No jobs deposited, sleeping... ({idle_time}/{max_idle_time})")
                 idle_time += 60
