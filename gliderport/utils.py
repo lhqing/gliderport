@@ -13,9 +13,10 @@ def read_config(config_file, input_mode=None):
 
     Job config file format created by user and GliderPort:
     - input: 1) local file list; 2) bucket and prefix to get files from GCS
-    - output: bucked and prefix to upload files to GCS
-    - run: multiline commands or a list of commands to run on the VM to generate the output files
+    - output (optional): bucked and prefix to upload files to GCS
     - delete_input (optional): True or False, whether to delete the input files on source GCS after the job is done
+    - run: multiline commands or a list of commands to run on the VM to generate the output files
+    - python: multiline python scripts or a list of python scripts to run on the VM to generate the output files
     """
     with open(config_file) as fp:
         config = yaml.load(fp, Loader=yaml.FullLoader)
@@ -37,9 +38,10 @@ def read_config(config_file, input_mode=None):
         if input_opt != input_mode:
             raise ValueError(f"Input is not in {input_mode} form.\n{config}")
 
-    assert "output" in config, f"Output is not defined in config.\n{config}"
-    assert "bucket" in config["output"], f"Output bucket is not defined in config.\n{config}"
-    assert "prefix" in config["output"], f"Output prefix is not defined in config.\n{config}"
+    # output is optional now
+    # assert "output" in config, f"Output is not defined in config.\n{config}"
+    # assert "bucket" in config["output"], f"Output bucket is not defined in config.\n{config}"
+    # assert "prefix" in config["output"], f"Output prefix is not defined in config.\n{config}"
 
     flag = False
     for key in ["run", "python"]:

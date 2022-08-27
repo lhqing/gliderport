@@ -31,11 +31,14 @@ class Job:
             bucket=self.config["input"]["bucket"], prefix=self.config["input"]["prefix"], dest_path=self._local_prefix
         )
 
-        self.file_uploader = FileUploader(
-            bucket=self.config["output"]["bucket"],
-            prefix=self.config["output"]["prefix"],
-            file_paths=self._local_prefix,
-        )
+        if "output" in self.config:
+            self.file_uploader = FileUploader(
+                bucket=self.config["output"]["bucket"],
+                prefix=self.config["output"]["prefix"],
+                file_paths=self._local_prefix,
+            )
+        else:
+            self.file_uploader = None
 
         if "run" in self.config:
             self.runner = "bash"
@@ -91,7 +94,8 @@ class Job:
         success_flag = self._run(log_prefix=log_prefix, retry=retry, check=check)
 
         if success_flag:
-            self.file_uploader.transfer()
+            if self.file_uploader is not None:
+                self.file_uploader.transfer()
 
         # clean up local files for the next job
         self._clear_local_files()

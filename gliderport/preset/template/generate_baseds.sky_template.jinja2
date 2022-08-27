@@ -1,0 +1,22 @@
+resources:
+  cloud: gcp
+  instance_type: {{instance}}
+  region: {{region}}
+
+setup: |
+  conda config --add channels defaults
+  conda config --add channels bioconda
+  conda config --add channels conda-forge
+  conda install -y mamba -n base -c conda-forge
+  mamba install -y anndata pandas pybedtools pyBigWig pysam seaborn xarray zarr htslib
+  pip install git+https://github.com/lhqing/ALLCools.git
+  pip install git+https://github.com/lhqing/gliderport.git
+  gsutil -m cp {{ genome_path }} ~/genome.fa
+
+file_mounts:
+  /input:
+    source: gs://{{ input_bucket }}/
+    mode: MOUNT
+  /output:
+    source: gs://{{ output_bucket }}/
+    mode: MOUNT

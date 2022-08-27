@@ -1,0 +1,21 @@
+delete_input: true
+input:
+  local:
+    - {{ allc_table }}
+    - {{ chrom_size_file }}
+python: |
+  from ALLCools.count_matrix.base_ds import generate_base_ds
+  generate_base_ds(
+    output_dir_path='{{ base_ds_path }}',
+    genome_fasta_path='~/genome.fa',
+    chrom_size_path='~/sky_workdir/{{ chrom_size_file_name }}',
+    allc_table_path='~/sky_workdir/{{ allc_table_name }}',
+    generate_codebook=False,
+    context_size=3,
+    c_pos=0,
+    include_n=False,
+    pos_chunk={{ pos_chunk }},
+    sample_chunk={{ sample_chunk }},
+    data_dtype='uint16',
+    mode='w',
+    n_cpu={{ n_cpu }})
