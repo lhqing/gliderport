@@ -76,7 +76,7 @@ class GCSClient:
             path = str(path)
 
             if path.startswith("gs://"):
-                self.file_paths.append(Path(path))
+                self.file_paths.append(path)
             else:
                 path = Path(path).absolute().resolve()
                 if not path.exists():
@@ -141,7 +141,6 @@ class FileUploader(GCSClient):
                     file_paths.append(line.strip())
 
         self.add_file_paths(file_paths)
-        self.file_names = [path.name for path in self.file_paths]
 
         self.upload_success_path = f"{self.prefix}/UPLOAD_SUCCESS"
         self.parallel = parallel
