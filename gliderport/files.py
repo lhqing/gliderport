@@ -76,7 +76,7 @@ class GCSClient:
             path = str(path)
 
             if path.startswith("gs://"):
-                self.file_paths.append(path)
+                self.file_paths.append(Path(path))
             else:
                 path = Path(path).absolute().resolve()
                 if not path.exists():
