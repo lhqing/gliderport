@@ -17,6 +17,9 @@ run: |
   # setup
   find ./ | grep "tsv.gz$" > ./allc_files.txt
 
+  # update time stamp of tbi to prevent tabix from complaining
+  touch *.tbi
+
   # merge allc files
   allcools merge-allc \
   --allc_paths ./allc_files.txt \
