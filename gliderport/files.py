@@ -51,6 +51,8 @@ class GCSClient:
         m_option = "-m" if parallel else ""
         cmd = f'cat "{temp_name}" | gsutil {m_option} cp -r -I "{destination_path}"'
         cls._run(cmd)
+        # delete temp file
+        Path(temp_name).unlink()
         return temp_name
 
     @classmethod

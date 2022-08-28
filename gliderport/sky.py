@@ -94,7 +94,7 @@ class _JobListener:
             config["input"]["prefix"] = prefix
             del config["input"]["local"]
 
-            with NamedTemporaryFile(suffix=".config.yaml", delete=False, mode="w") as temp_config_file:
+            with NamedTemporaryFile(suffix=".glider.config.yaml", delete=False, mode="w") as temp_config_file:
                 yaml.dump(config, temp_config_file, default_style="|")
             return input_opt, file_paths, prefix, temp_config_file.name
 
@@ -566,6 +566,13 @@ class GliderPort:
                 # change local_config_path to uploaded config_path
                 new_path = local_config_path.parent / f"{local_config_path.name}_uploaded"
                 local_config_path.rename(new_path)
+
+                try:
+                    # remove the temp file if exists
+                    Path(config_path).unlink()
+                except FileNotFoundError:
+                    # config_path is already uploaded
+                    pass
 
                 self._worker_refresh_clock -= 1
                 logger.debug(f"Refresh clock: {self._worker_refresh_clock}, will refresh worker when <= 0.")

@@ -10,6 +10,7 @@ run: |
   set -e
   cd $HOME/sky_workdir/
   pwd
+  ls -hal
 
   # download chrom size path
   gsutil cp {{ chrom_size_cloud_path}} ./chrom.sizes

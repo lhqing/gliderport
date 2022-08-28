@@ -58,7 +58,7 @@ class Job:
         # change working directory to local prefix
         previous_cwd = os.getcwd()
         os.chdir(self._local_prefix)
-        with NamedTemporaryFile(mode="w", delete=False) as f:
+        with NamedTemporaryFile(mode="w") as f:
             for command in commands:
                 f.write(f"{command}\n")
             f.flush()
