@@ -73,12 +73,17 @@ class GCSClient:
                 _file_paths.extend(list(path))
 
         for path in _file_paths:
-            path = Path(path).absolute().resolve()
-            if not path.exists():
-                # make sure path is not wildcard
-                if "*" not in str(path):
-                    raise FileNotFoundError(f"File {path} not found")
-            self.file_paths.append(path)
+            path = str(path)
+
+            if path.startswith("gs://"):
+                self.file_paths.append(path)
+            else:
+                path = Path(path).absolute().resolve()
+                if not path.exists():
+                    # make sure path is not wildcard
+                    if "*" not in str(path):
+                        raise FileNotFoundError(f"File {path} not found")
+                self.file_paths.append(path)
         return
 
     def _transfer(self):

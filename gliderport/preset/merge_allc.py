@@ -21,7 +21,7 @@ def prepare_merge_allc(
     job_dir,
     output_bucket,
     output_prefix,
-    instance="n2d-highcpu-48",
+    instance="n2d-standard-48",
     region="us-west1",
     merge_allc_cpu=None,
 ):

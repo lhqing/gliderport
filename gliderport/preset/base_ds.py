@@ -14,7 +14,7 @@ def prepare_base_ds(
     input_bucket,
     output_bucket,
     output_prefix,
-    instance="n2d-highcpu-48",
+    instance="n2d-standard-48",
     region="us-west1",
     pos_chunk=1000000,
     sample_chunk=200,
