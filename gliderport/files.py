@@ -52,7 +52,6 @@ class GCSClient:
         cmd = f'cat "{temp_name}" | gsutil {m_option} cp -r -I "{destination_path}"'
         cls._run(cmd)
         # delete temp file
-        Path(temp_name).unlink()
         return temp_name
 
     @classmethod
@@ -158,6 +157,10 @@ class FileUploader(GCSClient):
     def _transfer(self):
         file_list_temp_path = self._move_files(self.file_paths, self.gcs_location, parallel=self.parallel)
         self._move_file_and_dir(file_list_temp_path, f"{self.gcs_location}/UPLOAD_SUCCESS", parallel=self.parallel)
+
+        # delete temp file
+        Path(file_list_temp_path).unlink()
+        return
 
 
 class FileDownloader(GCSClient):
