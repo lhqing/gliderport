@@ -40,6 +40,8 @@ def prepare_base_ds(
             f.write(f"{chrom}\t{size}\n")
         chrom_size_path_dict[chrom] = chrom_size_path
 
+    # prepare job config
+    output_prefix = str(output_prefix).rstrip("/")
     for chrom, chrom_path in chrom_size_path_dict.items():
         for group, sub_df in allc_table.groupby("group"):
             job_name = f"{group}_{chrom}"

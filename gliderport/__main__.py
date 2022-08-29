@@ -53,6 +53,17 @@ def port(local_job_dir, n_uploader=1, n_worker=16, max_idle_hours=100, use_hash=
     return
 
 
+@click.command("warm-up")
+@click.option("--region", required=True, help="GCP region")
+@click.option("--spot/--no-spot", default=True, help="Use spot instances")
+def _warm_up(region, spot):
+    """Warm up sky by submit an empty job."""
+    from .preset.utilities import warm_up_sky
+
+    warm_up_sky(region=region, spot=spot)
+    return
+
+
 @click.group()
 def glider():
     """Glider port command line interface."""
@@ -64,5 +75,6 @@ def _glider():
     glider.add_command(upload_files)
     glider.add_command(vm_worker)
     glider.add_command(port)
+    glider.add_command(_warm_up)
     glider()
     return

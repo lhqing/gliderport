@@ -33,6 +33,7 @@ def prepare_merge_allc(
     allc_table = pd.read_csv(allc_table_csv, header=None, names=["allc_path", "group"])
     # add tbi paths for each allc file
     allc_table = _add_tbi(allc_table)
+    output_prefix = str(output_prefix).rstrip("/")
 
     for group, sub_df in allc_table.groupby("group"):
         record = {

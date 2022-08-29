@@ -1,0 +1,15 @@
+resources:
+  cloud: gcp
+  instance_type: n2d-standard-4
+  region: {{region}}
+
+setup: |
+  conda config --add channels defaults
+  conda config --add channels bioconda
+  conda config --add channels conda-forge
+  conda install -y mamba -n base -c conda-forge
+
+# this part is added by GliderPort
+run:
+    echo "Hello World"
+    sleep 60

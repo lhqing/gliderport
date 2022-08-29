@@ -84,6 +84,8 @@ def prepare_mapping(
 
     fastq_table.to_csv(job_dir / "fastq_table.csv", index=False)
 
+    output_prefix = str(output_prefix).rstrip("/")
+
     # prepare job config
     for group, sub_df in fastq_table.groupby("group"):
         r1_paths = sub_df["R1"].tolist()
