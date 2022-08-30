@@ -215,7 +215,7 @@ class _SpotWorker:
         # if a worker is submitted multiple times, there will be multiple status with this job_name
         # only update the newest status
         # get the status with the largest job_id
-        latest_job_status = sorted(self._jobs.items(), key=lambda i: i[0])[-1]
+        _, latest_job_status = sorted(self._jobs.items(), key=lambda i: i[0])[-1]
         self._status.update(latest_job_status)
         return
 
