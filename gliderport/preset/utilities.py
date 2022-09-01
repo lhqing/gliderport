@@ -27,8 +27,7 @@ def warm_up_sky(region="us-west1", spot=True):
             else:
                 raise NotImplementedError
 
-            cmd = f"sky {spot_str} launch -d -y -n warm_up {f.name}"
+            cmd = f"sky {spot_str} launch -d -y -n warmup {f.name}"
             log_prefix = pathlib.Path().absolute() / "warm_up_sky"
-            print(f'Running: "{cmd}"')
-            CommandRunner(cmd, log_prefix=log_prefix, check=True, retry=2, env=None)
+            CommandRunner(cmd, log_prefix=log_prefix, check=True, retry=2, env=None).run()
     return

@@ -219,7 +219,7 @@ class _SpotWorker:
         self._status.update(latest_job_status)
         return
 
-    def launch(self):
+    def launch(self, retry_until_up=True):
         """Launch a job on the spot cluster."""
         worker_config = self._template.copy()
         run_cmd = (
@@ -233,7 +233,11 @@ class _SpotWorker:
         with NamedTemporaryFile(suffix=".sky-worker.yaml", mode="w") as temp_config_file:
             yaml.dump(worker_config, temp_config_file, default_style="|")
 
-            cmd = f"sky spot launch -y -d -n {self.job_name} {temp_config_file.name}"
+            if retry_until_up:
+                retry_flag_str = "--retry-until-up"
+            else:
+                retry_flag_str = ""
+            cmd = f"sky spot launch -y -d -n {self.job_name} {temp_config_file.name} {retry_flag_str}"
             logger.info(f"Launching worker {self.worker_id}\n{cmd}")
             subprocess.run(
                 cmd,
@@ -245,12 +249,12 @@ class _SpotWorker:
             )
         return
 
-    def check_launch(self):
+    def check_launch(self, retry_until_up=True):
         if not self.is_terminal:
             logger.info(f"Worker {self.worker_id} is still working with status {self.status}")
             return
         else:
-            self.launch()
+            self.launch(retry_until_up=retry_until_up)
             return
 
     @property
@@ -284,6 +288,7 @@ class WorkerManager:
         launch_timeout=600,
         max_idle_time=600,
         spot=True,
+        retry_until_up=True,
     ):
         """
         Initialize a worker manager.
@@ -306,6 +311,9 @@ class WorkerManager:
             max idle time for spot job vm worker
         spot :
             whether to use spot instance
+        retry_until_up :
+            whether to retry until the spot job is up,
+            if True, will use `--retry-until-up` flag in `sky spot launch`
         """
         self.bucket = port_bucket
         self.job_config_dir = f"{port_prefix}/job_config"
@@ -313,6 +321,7 @@ class WorkerManager:
         self.alive_workers = set()
         self._fs = fs
         self._worker_hash = worker_hash
+        self.retry_until_up = retry_until_up
 
         with open(sky_template_path) as f:
             self._sky_template_config = yaml.full_load(f)
@@ -411,7 +420,7 @@ class WorkerManager:
             if n_jobs == 0:
                 continue
             worker = self._workers[worker_id]
-            worker.check_launch()
+            worker.check_launch(retry_until_up=self.retry_until_up)
         return
 
 
@@ -426,7 +435,15 @@ class GliderPort:
     """
 
     def __init__(
-        self, local_job_dir, n_uploader=1, n_worker=16, max_idle_time=600, launch_timeout=600, use_hash=None, spot=True
+        self,
+        local_job_dir,
+        n_uploader=1,
+        n_worker=16,
+        max_idle_time=600,
+        launch_timeout=600,
+        use_hash=None,
+        spot=True,
+        retry_until_up=True,
     ):
         """
         Initialize a glider port.
@@ -447,6 +464,9 @@ class GliderPort:
             worker hash for the spot job name
         spot :
             whether to use spot instance
+        retry_until_up :
+            whether to retry until the spot job is up,
+            if True, will use `--retry-until-up` flag in `sky spot launch`
         """
         self.local_job_dir = Path(local_job_dir).absolute().resolve()
         if use_hash is None:
@@ -486,6 +506,7 @@ class GliderPort:
             worker_hash=self.gliderport_hash,
             max_idle_time=max_idle_time,
             launch_timeout=launch_timeout,
+            retry_until_up=retry_until_up,
         )
         return
 
