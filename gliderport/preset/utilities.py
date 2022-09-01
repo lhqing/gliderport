@@ -18,16 +18,17 @@ def warm_up_sky(region="us-west1", spot=True):
         template = jinja2.Template(f.read())
         content = template.render(region=region, undefined=jinja2.StrictUndefined)
 
-    with tempfile.NamedTemporaryFile(mode="w") as f:
-        f.write(content)
-        f.flush()
+        with tempfile.NamedTemporaryFile(mode="w") as f:
+            f.write(content)
+            f.flush()
 
-        if spot:
-            spot_str = "spot"
-        else:
-            raise NotImplementedError
+            if spot:
+                spot_str = "spot"
+            else:
+                raise NotImplementedError
 
-        cmd = f"sky {spot_str} launch -d -y -n warm_up {f.name}"
-        log_prefix = pathlib.Path().absolute() / "warm_up_sky"
-        CommandRunner(cmd, log_prefix=log_prefix, check=True, retry=2, env=None)
+            cmd = f"sky {spot_str} launch -d -y -n warm_up {f.name}"
+            log_prefix = pathlib.Path().absolute() / "warm_up_sky"
+            print(f'Running: "{cmd}"')
+            CommandRunner(cmd, log_prefix=log_prefix, check=True, retry=2, env=None)
     return
