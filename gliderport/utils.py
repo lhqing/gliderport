@@ -1,3 +1,4 @@
+import re
 import subprocess
 
 import yaml
@@ -112,3 +113,23 @@ class CommandRunner:
                 logger.error(f"Check logs at {self.log_prefix}.std*.log")
             raise ValueError(f"Failed to run command {self.command} after {self.retry} retries.")
         return success
+
+
+def validate_name(name):
+    """Validate name or fail early."""
+    p = re.compile("[a-z]([-a-z0-9]{0,61}[a-z0-9])?")
+    m = p.match(name)
+    if m is None:
+        flag = False
+    else:
+        start, end = m.span()
+        if start != 0 or end != len(name):
+            flag = False
+        else:
+            flag = True
+
+    if not flag:
+        raise ValueError(
+            f"Name '{name}' is invalid; ensure it is fully matched " "by regex: [a-z]([-a-z0-9]{0,61}[a-z0-9])?"
+        )
+    return

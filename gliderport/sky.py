@@ -1,6 +1,5 @@
 import enum
 import random
-import subprocess
 import time
 from pathlib import Path
 from tempfile import NamedTemporaryFile
@@ -13,7 +12,7 @@ from sky import exceptions as sky_exceptions
 
 from .files import FileUploader
 from .log import init_logger
-from .utils import read_config
+from .utils import CommandRunner, read_config, validate_name
 
 WORKER_REFRESH_CLOCK_INIT = 16
 GLIDER_PORT_PROJECT_BUCKET = "glider-port"
@@ -111,7 +110,7 @@ class _JobListener:
         total_jobs = len(job_configs)
         for i, (job_id, local_config_path) in enumerate(job_configs.items()):
             input_opt, *values = self._parse_job_config(job_id, local_config_path)
-            logger.info(f"Uploading job {job_id} - {i+1}/{total_jobs} jobs")
+            logger.info(f"Uploading job {job_id} - {i + 1}/{total_jobs} jobs")
             if input_opt == "local":
                 file_paths, prefix, temp_config_file = values
                 _upload(
@@ -230,23 +229,17 @@ class _SpotWorker:
         )
         worker_config["run"] = run_cmd
 
-        with NamedTemporaryFile(suffix=".sky-worker.yaml", mode="w") as temp_config_file:
+        with NamedTemporaryFile(suffix=".sky-worker.yaml", mode="w", delete=False) as temp_config_file:
             yaml.dump(worker_config, temp_config_file, default_style="|")
 
-            if retry_until_up:
-                retry_flag_str = "--retry-until-up"
-            else:
-                retry_flag_str = ""
-            cmd = f"sky spot launch -y -d -n {self.job_name} {temp_config_file.name} {retry_flag_str}"
-            logger.info(f"Launching worker {self.worker_id}\n{cmd}")
-            subprocess.run(
-                cmd,
-                shell=True,
-                capture_output=True,
-                encoding="utf-8",
-                check=True,
-                timeout=self._launch_timeout,
-            )
+        if retry_until_up:
+            retry_flag_str = "--retry-until-up"
+        else:
+            retry_flag_str = ""
+
+        cmd = f"sky spot launch -y -d -n {self.job_name} {temp_config_file.name} {retry_flag_str}"
+        logger.info(f"Launching worker {self.worker_id}\n{cmd}")
+        CommandRunner(cmd, log_prefix=None, check=True, retry=2, env=None).run()
         return
 
     def check_launch(self, retry_until_up=True):
@@ -474,6 +467,8 @@ class GliderPort:
         else:
             logger.info(f"Using user provided hash: {use_hash}")
             self.gliderport_hash = use_hash
+
+        validate_name(self.gliderport_hash)
 
         logger.info(f"Initializing GliderPort, ID is {self.gliderport_hash}")
         self.bucket_name = f"{GLIDER_PORT_PROJECT_BUCKET}"
