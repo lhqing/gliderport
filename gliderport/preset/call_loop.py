@@ -35,7 +35,7 @@ def prepare_call_loop(
             "output_dir": group,
             "output_bucket": output_bucket,
             "cool_paths": sub_df["cool_path"].tolist(),
-            "output_prefix": f"{output_prefix}/{group}",
+            "output_prefix": output_prefix,
             "chrom_size_path": chrom_size_path,
             "chrom_size_file": chrom_size_path,
             "black_list_file": black_list_path,

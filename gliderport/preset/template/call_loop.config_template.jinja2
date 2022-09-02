@@ -14,6 +14,7 @@ python: |
   import pandas as pd
   import os
   import subprocess
+  import pathlib
 
   table = pd.read_csv('{{ cell_table_file_name }}', header=None)
   table[1] = table[1].map(os.path.expanduser)  # expand ~
@@ -45,3 +46,10 @@ python: |
       size_thres=1)
   subprocess.run('rm -f */shuffle/*/*.npz', shell=True, check=True)
   subprocess.run('rm -rf **/.snakemake', shell=True, check=True)
+
+  # delete input files
+  for path in table[1].values:
+      pathlib.Path(path).unlink()
+  pathlib.Path('{{ cell_table_file_name }}').unlink()
+  pathlib.Path('{{ chrom_size_file_name }}').unlink()
+  pathlib.Path('{{ black_list_file_name }}').unlink()
