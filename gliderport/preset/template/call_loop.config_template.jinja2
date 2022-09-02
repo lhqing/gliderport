@@ -1,0 +1,47 @@
+delete_input: true
+input:
+  local:
+    {% for cool_path in cool_paths %}- {{ cool_path }}
+    {% endfor %}
+    - {{ cell_table }}
+    - {{ chrom_size_file }}
+    - {{ black_list_file }}
+output:
+  bucket: {{ output_bucket }}
+  prefix: {{ output_prefix }}
+python: |
+  from schicluster.loop import call_loop
+  import pandas as pd
+  import os
+  import subprocess
+
+  table = pd.read_csv('{{ cell_table_file_name }}', header=None)
+  table[1] = table[1].map(os.path.expanduser)  # expand ~
+  table.to_csv('{{ cell_table_file_name }}', index=None, header=None)
+
+  call_loop(
+      cell_table_path='{{ cell_table_file_name }}',
+      output_dir='{{ output_dir }}',
+      chrom_size_path=os.path.expanduser('~/sky_workdir/{{ chrom_size_file_name }}'),
+      shuffle=True,
+      chunk_size=200,
+      dist=5050000,
+      cap=5,
+      pad=5,
+      gap=2,
+      resolution=10000,
+      min_cutoff=1e-06,
+      keep_cell_matrix=False,
+      cpu_per_job={{ n_cpu }},
+      log_e=True,
+      raw_resolution_str=None,
+      downsample_shuffle=None,
+      black_list_path=os.path.expanduser('~/sky_workdir/{{ black_list_file_name }}'),
+      fdr_pad=7,
+      fdr_min_dist=5,
+      fdr_max_dist=500,
+      fdr_thres=0.1,
+      dist_thres=20000,
+      size_thres=1)
+  subprocess.run('rm -f */shuffle/*/*.npz', shell=True, check=True)
+  subprocess.run('rm -rf **/.snakemake', shell=True, check=True)

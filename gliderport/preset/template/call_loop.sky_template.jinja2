@@ -1,0 +1,20 @@
+resources:
+  cloud: gcp
+  instance_type: {{instance}}
+  region: {{region}}
+
+setup: |
+  conda config --add channels defaults
+  conda config --add channels bioconda
+  conda config --add channels conda-forge
+  conda install -y mamba -n base -c conda-forge
+  sleep 3
+  which mamba
+  mamba install -y numpy scipy scikit-learn h5py joblib pytables pybedtools pandas statsmodels rpy2 xarray zarr snakemake
+  pip install clodius cooler anndata
+  pip install git+https://github.com/zhoujt1994/scHiCluster.git
+  pip install git+https://github.com/lhqing/gliderport.git
+
+# this part is added by GliderPort
+# run:
+#   glider vm-worker --bucket bucket --prefix prefix --max_idle_time max_idle_time
