@@ -117,7 +117,7 @@ class CommandRunner:
 
 def validate_name(name):
     """Validate name or fail early."""
-    p = re.compile("[a-z]([-a-z0-9]{0,61}[a-z0-9])?")
+    p = re.compile("[a-z0-9]([-a-z0-9]{0,61}[a-z0-9])?")
     m = p.match(name)
     if m is None:
         flag = False
@@ -130,6 +130,6 @@ def validate_name(name):
 
     if not flag:
         raise ValueError(
-            f"Name '{name}' is invalid; ensure it is fully matched " "by regex: [a-z]([-a-z0-9]{0,61}[a-z0-9])?"
+            f"Name '{name}' is invalid; ensure it is fully matched " "by regex: [a-z0-9]([-a-z0-9]{0,61}[a-z0-9])?"
         )
     return
