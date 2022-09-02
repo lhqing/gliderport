@@ -15,6 +15,7 @@ def prepare_call_loop(
     output_prefix,
     instance="n2d-standard-48",
     region="us-west1",
+    disk_size=400,
 ):
     """Prepare call loop cloud config."""
     job_dir = pathlib.Path(job_dir).absolute().resolve()
@@ -55,6 +56,7 @@ def prepare_call_loop(
     record = {
         "instance": instance,
         "region": region,
+        "disk_size": disk_size,
     }
     rander_preset_sky("call_loop", out_sky, **record)
     return
