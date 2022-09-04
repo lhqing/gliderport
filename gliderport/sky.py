@@ -600,7 +600,6 @@ class GliderPort:
                 )
 
             if jobs_deposited_in_this_loop == 0:
-                self._update_worker()
                 if idle_time % 1800 == 0:
                     self._update_worker()
                     logger.info(f"No jobs deposited, sleeping... ({idle_time}/{max_idle_time})")
