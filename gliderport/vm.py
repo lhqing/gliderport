@@ -1,7 +1,6 @@
 """Worker and Job classes for the VM."""
 
 import os
-import shutil
 import time
 from pathlib import Path
 from tempfile import NamedTemporaryFile, TemporaryDirectory
@@ -74,10 +73,7 @@ class Job:
         # clean up local files
         for files in os.listdir(self._local_prefix):
             path = os.path.join(self._local_prefix, files)
-            try:
-                shutil.rmtree(path)
-            except OSError:
-                os.remove(path)
+            CommandRunner(command=f"rm -rf {path}", log_prefix=None, check=True).run()
 
     def run(self, log_prefix=None, retry=2, check=False):
         """Run the job, return True if successful."""
