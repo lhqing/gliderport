@@ -45,6 +45,7 @@ python: |
       dist_thres=20000,
       size_thres=1)
   subprocess.run('rm -f */shuffle/*/*.npz', shell=True, check=True)
+  subprocess.run('rm -f */shuffle/.snakemake', shell=True, check=True)
   subprocess.run('rm -rf **/.snakemake', shell=True, check=True)
 
   # delete input files
