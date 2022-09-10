@@ -23,7 +23,8 @@ dependencies = [
     "pandas",
     "Jinja2",
     "click",
-    "gcsfs"
+    "gcsfs",
+    "nbformat",
 ]
 
 [project.optional-dependencies]

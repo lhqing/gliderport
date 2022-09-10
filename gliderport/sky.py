@@ -221,11 +221,18 @@ class _SpotWorker:
     def launch(self, retry_until_up=True):
         """Launch a job on the spot cluster."""
         worker_config = self._template.copy()
+
+        # this is reserved key for gliderport
+        _worker_params = worker_config.get("gliderport_params", {})
+        worker_cleanup_before_run = _worker_params.get("cleanup_before_run", True)
+        cleanup_str = "--cleanup" if worker_cleanup_before_run else "--no-cleanup"
+
         run_cmd = (
             "glider vm-worker "
             f"--bucket {self.bucket} "
             f"--prefix {self.prefix} "
-            f"--max_idle_time {self.max_idle_time}"
+            f"--max_idle_time {self.max_idle_time} "
+            f"{cleanup_str} "
         )
         worker_config["run"] = run_cmd
 

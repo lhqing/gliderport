@@ -19,10 +19,11 @@ class Job:
 
     def __init__(self, config_file):
         self.config_file = config_file
+        self.job_name = ".".join(Path(config_file).name.split(".")[:-2])
         self.config, _ = read_config(config_file, input_mode="gcs")
         self._delete_input_from_gcs_flag = self.config.get("delete_input", False)
 
-        self._local_prefix = Path(f"{os.environ['HOME']}/sky_workdir/")
+        self._local_prefix = Path(f"{os.environ['HOME']}/{self.job_name}/")
         self._local_prefix.mkdir(parents=True, exist_ok=True)
 
         logger.info(f"Local prefix on VM is {self._local_prefix}")
@@ -47,6 +48,7 @@ class Job:
             self.run_commands = self.config["python"]
         else:
             raise ValueError(f"No run or python command found in config file {self.config_file}")
+        return
 
     def _run(self, log_prefix, retry=2, check=False):
         commands = self.run_commands
@@ -69,18 +71,19 @@ class Job:
         os.chdir(previous_cwd)
         return success_flag
 
-    def _clear_local_files(self):
+    def _cleanup_local_files(self):
         # clean up local files
         for files in os.listdir(self._local_prefix):
             path = os.path.join(self._local_prefix, files)
             CommandRunner(command=f"rm -rf {path}", log_prefix=None, check=True).run()
 
-    def run(self, log_prefix=None, retry=2, check=False):
+    def run(self, log_prefix=None, retry=2, check=False, cleanup_before_run=True):
         """Run the job, return True if successful."""
         logger.info(f"Running job with config file {self.config_file}")
 
-        # make sure local prefix is empty
-        self._clear_local_files()
+        if cleanup_before_run:
+            # make sure local prefix is empty
+            self._cleanup_local_files()
 
         self.file_downloader.transfer()
         # remove download success flag after making sure it exists
@@ -93,8 +96,8 @@ class Job:
             if self.file_uploader is not None:
                 self.file_uploader.transfer()
 
-        # clean up local files for the next job
-        self._clear_local_files()
+        # clean up local files after run
+        self._cleanup_local_files()
 
         # delete input from GCS if flag is set and the job was successful
         if success_flag and self._delete_input_from_gcs_flag:
@@ -105,7 +108,7 @@ class Job:
 class Worker(FileDownloader):
     """Worker run inside VM, identify jobs to run by itself, stop when there is no job to run for a while."""
 
-    def __init__(self, job_bucket, job_prefix, max_idle_time=1200):
+    def __init__(self, job_bucket, job_prefix, max_idle_time=1200, cleanup_before_run=True):
         with TemporaryDirectory() as tmp_dir:
             self.local_config_dir = Path(tmp_dir)
             self._fs = gcsfs.GCSFileSystem()
@@ -113,7 +116,7 @@ class Worker(FileDownloader):
             # init job configs
             super().__init__(job_bucket, job_prefix, self.local_config_dir)
             self.job_configs = []
-            self.run(max_idle_time=max_idle_time)
+            self.run(max_idle_time=max_idle_time, cleanup_before_run=cleanup_before_run)
             return
 
     def _update_job_configs(self):
@@ -133,8 +136,9 @@ class Worker(FileDownloader):
         self._fs.rename(gcs_path, gcs_path + suffix)
         return
 
-    def run(self, max_idle_time, retry=2):
+    def run(self, max_idle_time, retry=2, cleanup_before_run=True):
         """Run the jobs in the job bucket."""
+        # TODO: think about how to allow workers to run jobs in parallel
         total_idle_time = 0
         while True:
             self._update_job_configs()
@@ -157,7 +161,9 @@ class Worker(FileDownloader):
                 for job_config in self.job_configs:
                     # run job
                     log_prefix = f"gs://{self.bucket.name}/{self.prefix}/{job_config.name}"
-                    success_flag = Job(job_config).run(log_prefix=log_prefix, retry=retry, check=False)
+                    success_flag = Job(job_config).run(
+                        log_prefix=log_prefix, retry=retry, check=False, cleanup_before_run=cleanup_before_run
+                    )
 
                     # rename job config in job bucket, the same config will not be run again
                     if success_flag:
