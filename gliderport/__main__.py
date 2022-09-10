@@ -33,9 +33,10 @@ def upload_files(bucket, prefix, file_paths, file_list_path=None, redo=False, pa
 @click.option("--bucket", required=True, help="GCS bucket name")
 @click.option("--prefix", required=True, help="GCS prefix for job config files")
 @click.option("--max_idle_time", required=False, default=1200, help="Max idle time in seconds")
-def vm_worker(bucket, prefix, max_idle_time):
+@click.option("--cleanup/--no-cleanup", default=True, help="Cleanup local files before run")
+def vm_worker(bucket, prefix, max_idle_time, cleanup):
     """Run a worker on VM."""
-    Worker(job_bucket=bucket, job_prefix=prefix, max_idle_time=max_idle_time)
+    Worker(job_bucket=bucket, job_prefix=prefix, max_idle_time=max_idle_time, cleanup_before_run=cleanup)
     return
 
 
