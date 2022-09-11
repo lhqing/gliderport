@@ -40,11 +40,12 @@ def _parse_workdir_notebooks(notebook_dir, default_cpu=1, default_mem_gb=1):
             continue
 
     nb_records = pd.DataFrame(nb_records).T.reset_index()
-    nb_records.columns = ["num_step", "sub_step", "path", "parameters"]
+    nb_records.columns = ["num_step", "sub_step"] + nb_records.columns[2:].tolist()
+    nb_records = nb_records.loc[:, ["num_step", "sub_step", "path", "parameters"]].copy()
     return nb_records
 
 
-def notebook_snakemake(work_dir, notebook_dir, groups, default_cpu=1, default_mem_gb=1):
+def notebook_snakemake(work_dir, notebook_dir, groups, default_cpu=1, default_mem_gb=1, redo_prepare=False):
     """
     Prepare snakemake file for running a series of notebooks in multiple groups.
 
@@ -56,12 +57,26 @@ def notebook_snakemake(work_dir, notebook_dir, groups, default_cpu=1, default_me
         Directory containing a series of template notebooks with name suffix indicating the execution order.
     groups :
         A list of groups, each group will have its own sub-dir in the work_dir, and run through the notebook series.
+        If a single file path is given, each row in the file will be treated as a group.
     default_cpu :
         Default cpu for each notebook.
     default_mem_gb :
         Default memory for each notebook.
+    redo_prepare :
+        If True, will re-generate the snakemake file even if it already exists.
 
     """
+    work_dir = pathlib.Path(work_dir).resolve().absolute()
+    work_dir = str(work_dir).rstrip("/")
+    snakefile_path = pathlib.Path(work_dir) / "Snakefile"
+    if snakefile_path.exists() and not redo_prepare:
+        print(f"Snakefile already exists at {snakefile_path}, skip.")
+        return
+
+    if isinstance(groups, (str, pathlib.Path)):
+        with open(groups) as f:
+            groups = [line.strip() for line in f]
+
     nb_records = _parse_workdir_notebooks(
         notebook_dir=notebook_dir, default_cpu=default_cpu, default_mem_gb=default_mem_gb
     )
@@ -83,17 +98,16 @@ rule {rule_name}:
     resources:
         mem_gb={mem_gb}
     shell:
-        "papermill --cwd {work_dir}/{{wildcards.group_name}} "
-        "-f {work_dir}/{{wildcards.group_name}}/log/{rule_name}.config.yaml "
-        "{{params.input_nb}} "
-        "{{log.output_nb}} "
-        "> {{log.log}} 2>&1 "
-        "&& touch {{output}}"  # generate success flag
+        "glider-preset papermill "
+        "--input_path {{params.input_nb}} "
+        "--output_path {{log.output_nb}} "
+        "--config_path {work_dir}/{{wildcards.group_name}}/log/{rule_name}.config.yaml "
+        "--cwd {work_dir}/{{wildcards.group_name}} "
+        "--log_path {{log.log}} "
+        "--success_flag {{output}} "
 """
 
     snakemake_str = ""
-    work_dir = pathlib.Path(work_dir).resolve().absolute()
-    work_dir = str(work_dir).rstrip("/")
     # notebook rules
     previous_rule_names = None
     rule_name = None
@@ -109,7 +123,7 @@ rule {rule_name}:
             rule_name = f"step_{num_step}{sub_step}"
             nb_name = pathlib.Path(nb_path).name
             if previous_rule_names is None:
-                input_pattern = f'"{work_dir}/Snakefile"'
+                input_pattern = f'"{snakefile_path}"'
             else:
                 input_files = []
                 for _rn in previous_rule_names:
@@ -146,7 +160,6 @@ rule final:
 """
     snakemake_str = final_rule_str + snakemake_str
 
-    snakefile_path = f"{work_dir}/Snakefile"
     with open(snakefile_path, "w") as f:
         f.write(snakemake_str)
 

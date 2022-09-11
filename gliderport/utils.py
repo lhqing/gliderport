@@ -1,5 +1,6 @@
 import re
 import subprocess
+import time
 
 import yaml
 
@@ -56,12 +57,13 @@ def read_config(config_file, input_mode=None):
 class CommandRunner:
     """Run command using subprocess.run()."""
 
-    def __init__(self, command, log_prefix, check=False, retry=2, env=None):
+    def __init__(self, command, log_prefix, check=False, retry=2, env=None, sleep_after_fail=0):
         self.command = command
         self.log_prefix = log_prefix
         self.check = check
         self.env = env
         self.retry = retry
+        self.sleep_after_fail = sleep_after_fail
 
     def _run(self, run_id):
         try:
@@ -111,6 +113,7 @@ class CommandRunner:
         if not success and self.check:
             if self.log_prefix is not None:
                 logger.error(f"Check logs at {self.log_prefix}.std*.log")
+            time.sleep(self.sleep_after_fail)
             raise ValueError(f"Failed to run command {self.command} after {self.retry} retries.")
         return success
 

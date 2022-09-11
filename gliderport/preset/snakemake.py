@@ -2,6 +2,9 @@ import multiprocessing
 import os
 import pathlib
 
+import yaml
+
+from .template import rander_preset_config
 from .utilities import CommandRunner
 
 
@@ -14,7 +17,17 @@ def _get_mem_gb():
 class RobustSnakemakeRunner:
     """A wrapper around Snakemake that can recover from preemption."""
 
-    def __init__(self, work_dir, snakefile=None, n_jobs=None, n_mem_gb=None, retry=2, keep_going=True, latency_wait=60):
+    def __init__(
+        self,
+        work_dir,
+        snakefile=None,
+        n_jobs=None,
+        n_mem_gb=None,
+        retry=2,
+        keep_going=True,
+        latency_wait=60,
+        sleep_after_fail=3600,
+    ):
         if n_jobs is None:
             self.n_jobs = multiprocessing.cpu_count()
         else:
@@ -35,6 +48,7 @@ class RobustSnakemakeRunner:
         self.retry = retry
         self.keep_going = keep_going
         self.latency_wait = latency_wait
+        self.sleep_after_fail = sleep_after_fail
 
     def _unlock(self):
         """Unlock Snakemake."""
@@ -57,39 +71,52 @@ class RobustSnakemakeRunner:
             f"--latency-wait {self.latency_wait} "
             f"--restart-times {self.retry}"
         )
-        CommandRunner(cmd, log_prefix=self.work_dir / "snakemake", check=True, retry=1).run()
+        CommandRunner(
+            cmd, log_prefix=self.work_dir / "snakemake", check=True, retry=1, sleep_after_fail=self.sleep_after_fail
+        ).run()
         return
 
 
-# def prepare_snakemake(
-#     job_dir,
-#     work_dirs,
-#     output_bucket,
-#     output_prefix,
-#     sky_template,
-#     instance="n2d-standard-48",
-#     region="us-west1",
-#     disk_size=256,
-# ):
-#     """Prepare snakemake cloud config."""
-#     job_dir = pathlib.Path(job_dir).absolute().resolve()
-#     job_dir.mkdir(parents=True, exist_ok=True)
-#
-#     if isinstance(work_dirs, (str, pathlib.Path)):
-#         work_dirs = [work_dirs]
-#     work_dirs = [pathlib.Path(wd).absolute().resolve() for wd in work_dirs]
-#
-#     # prepare job config
-#     #for work_dir in work_dirs:
-#     #    job_dir / "config.yaml"
-#
-#     # prepare sky template
-#     out_sky = job_dir / "SKY_TEMPLATE.yaml"
-#     record = {
-#         "instance": instance,
-#         "region": region,
-#         "disk_size": disk_size,
-#         "output_bucket": output_bucket,
-#     }
-#     rander_preset_sky("snakemake", out_sky, **record)
-#     return
+def prepare_snakemake(
+    job_dir,
+    work_dirs,
+    output_bucket,
+    output_prefix,
+    sky_template,
+    total_jobs=None,
+    total_mem_gb=None,
+):
+    """Prepare snakemake cloud config."""
+    job_dir = pathlib.Path(job_dir).absolute().resolve()
+    job_dir.mkdir(parents=True, exist_ok=True)
+
+    if isinstance(work_dirs, (str, pathlib.Path)):
+        work_dirs = [work_dirs]
+    work_dirs = [pathlib.Path(wd).absolute().resolve() for wd in work_dirs]
+
+    # prepare job config
+    for work_dir in work_dirs:
+        group = work_dir.name
+        record = {
+            "work_dir": work_dir,
+            "bucket": output_bucket,
+            "prefix": f"{output_prefix}/{group}",
+            "total_jobs": total_jobs,
+            "total_mem_gb": total_mem_gb,
+        }
+
+        out_config = job_dir / f"{group}.config.yaml"
+        uploaded_config = job_dir / f"{group}.config.yaml_uploaded"
+        if uploaded_config.exists():
+            continue
+        rander_preset_config("snakemake", out_config, **record)
+
+    # prepare sky template
+    out_sky = job_dir / "SKY_TEMPLATE.yaml"
+    with open(sky_template) as f:
+        sky_template = yaml.load(f, Loader=yaml.FullLoader)
+        # remove the run section of template
+        sky_template.pop("run", None)
+    with open(out_sky, "w") as f:
+        f.write(sky_template)
+    return

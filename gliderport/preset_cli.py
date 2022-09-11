@@ -58,6 +58,39 @@ def merge_allc(
     return
 
 
+@click.command("papermill")
+@click.option("--input_path", required=True, help="Path to input notebook.")
+@click.option("--output_path", required=True, help="Path to output notebook.")
+@click.option("--config_path", required=True, help="Path to parameters YAML file.")
+@click.option("--cwd", required=True, help="Path to current working directory.")
+@click.option("--log_path", required=True, help="Path to log file.")
+@click.option("--success_flag", required=True, help="Path to success flag file.")
+def papermill_special(input_path, output_path, cwd, config_path, log_path, success_flag):
+    """Run papermill and ignore error if flag set."""
+    import pathlib
+    import subprocess
+
+    try:
+        subprocess.run(
+            "papermill "
+            f"--cwd {cwd} "
+            f"-f {config_path} "
+            f"{input_path} "
+            f"{output_path} "
+            f"> {log_path} 2>&1 "
+            f"&& touch {success_flag}",
+            shell=True,
+            check=True,
+        )
+    except subprocess.CalledProcessError as e:
+        ignore_path = pathlib.Path(cwd) / "ignore_error"
+        if ignore_path.exists():
+            print("Error ignored.")
+        else:
+            raise e
+    return
+
+
 @click.command("mapping")
 def mapping():
     """Mapping command line interface."""
@@ -74,5 +107,6 @@ def _glider_preset():
     """Glider port preset command line interface."""
     glider_preset.add_command(merge_allc)
     glider_preset.add_command(mapping)
+    glider_preset.add_command(papermill_special)
     glider_preset()
     return

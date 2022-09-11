@@ -6,13 +6,13 @@ output:
   bucket: {{ bucket }}
   prefix: {{ prefix }}
 python: |
-  from gliderport.preset.snakemake import RobustSnakemakeRunner
+  from gliderport.preset import RobustSnakemakeRunner
 
   RobustSnakemakeRunner(
     work_dir="./",
     snakefile="Snakefile",
-    n_jobs={{ n_jobs }},
-    n_mem_gb={{ n_mem_gb }},
+    n_jobs={{ total_jobs }},
+    n_mem_gb={{ total_mem_gb }},
     retry=2,
     keep_going=True,
     latency_wait=60
