@@ -6,7 +6,15 @@ output:
   bucket: {{ bucket }}
   prefix: {{ prefix }}
 python: |
-  from gliderport.preset import RobustSnakemakeRunner
+  from gliderport.preset import RobustSnakemakeRunner, notebook_snakemake
+  notebook_snakemake(
+    work_dir='./',
+    notebook_dir='template/',
+    groups='groups.txt',
+    default_cpu={{ default_cpu }},
+    default_mem_gb={{ default_mem_gb }},
+    redo_prepare=True,
+  )
 
   RobustSnakemakeRunner(
     work_dir="./",
