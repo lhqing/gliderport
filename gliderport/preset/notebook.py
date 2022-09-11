@@ -44,7 +44,7 @@ def _parse_workdir_notebooks(notebook_dir, default_cpu=1, default_mem_gb=1):
     return nb_records
 
 
-def prepare_snakemake(work_dir, notebook_dir, groups, default_cpu=1, default_mem_gb=1):
+def notebook_snakemake(work_dir, notebook_dir, groups, default_cpu=1, default_mem_gb=1):
     """
     Prepare snakemake file for running a series of notebooks in multiple groups.
 

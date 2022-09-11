@@ -1,0 +1,19 @@
+delete_input: true
+input:
+  local:
+    - {{ work_dir }}
+output:
+  bucket: {{ bucket }}
+  prefix: {{ prefix }}
+python: |
+  from gliderport.preset.snakemake import RobustSnakemakeRunner
+
+  RobustSnakemakeRunner(
+    work_dir="./",
+    snakefile="Snakefile",
+    n_jobs={{ n_jobs }},
+    n_mem_gb={{ n_mem_gb }},
+    retry=2,
+    keep_going=True,
+    latency_wait=60
+  ).run()
