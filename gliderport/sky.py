@@ -9,10 +9,11 @@ import pandas as pd
 import yaml
 from sky import core as sky_core
 from sky import exceptions as sky_exceptions
+from sky.backends import backend_utils
 
 from .files import FileUploader
 from .log import init_logger
-from .utils import CommandRunner, read_config, validate_name
+from .utils import read_config, validate_name
 
 WORKER_REFRESH_CLOCK_INIT = 16
 GLIDER_PORT_PROJECT_BUCKET = "glider-port"
@@ -20,7 +21,21 @@ GLIDER_PORT_PROJECT_BUCKET = "glider-port"
 logger = init_logger(__name__)
 
 
-def _sky_spot_launch():
+# monkey patching to allow spot controller to run more jobs in parallel
+backend_utils.DEFAULT_TASK_CPU_DEMAND = 0.2
+
+
+def _sky_spot_launch(entrypoint, name):
+    logger.info("Launching sky spot controller")
+    from sky.cli import spot_launch
+
+    spot_launch(
+        entrypoint,
+        name=name,
+        detach_run=True,
+        retry_until_up=True,
+        yes=True,
+    )
     return
 
 
@@ -244,13 +259,17 @@ class _SpotWorker:
             yaml.dump(worker_config, temp_config_file, default_style="|")
 
         if retry_until_up:
-            retry_flag_str = "--retry-until-up"
+            pass
         else:
-            retry_flag_str = ""
+            pass
 
-        cmd = f"sky spot launch -y -d -n {self.job_name} {temp_config_file.name} {retry_flag_str}"
-        logger.info(f"Launching worker {self.worker_id}\n{cmd}")
-        CommandRunner(cmd, log_prefix=None, check=True, retry=2, env=None).run()
+        # cmd = f"sky spot launch -y -d -n {self.job_name} {temp_config_file.name} {retry_flag_str}"
+        # logger.info(f"Launching worker {self.worker_id}\n{cmd}")
+        logger.info(
+            f"Launching worker {self.worker_id} with " f"config {temp_config_file.name} and name {self.job_name}"
+        )
+        _sky_spot_launch(entrypoint=temp_config_file.name, name=self.job_name)
+        # CommandRunner(cmd, log_prefix=None, check=True, retry=2, env=None).run()
         return
 
     def check_launch(self, retry_until_up=True):

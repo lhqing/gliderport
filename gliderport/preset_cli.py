@@ -70,7 +70,7 @@ def papermill_special(input_path, output_path, cwd, config_path, log_path, succe
     import pathlib
     import subprocess
 
-    ignore_path = pathlib.Path(cwd) / "ignore_error"
+    ignore_path = pathlib.Path(cwd) / "log/ignore_error"
     if ignore_path.exists():
         print(f"Skip notebook {input_path} due to ignore flag.")
         return

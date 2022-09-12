@@ -78,6 +78,14 @@ class RobustSnakemakeRunner:
         ).run()
         return
 
+    def cleanup(self):
+        """Cleanup Snakemake after run."""
+        path_to_rm = []
+        snakemake_log_dir = self.work_dir / ".snakemake"
+        path_to_rm.append(snakemake_log_dir)
+
+        return
+
 
 def prepare_snakemake(
     job_dir,
