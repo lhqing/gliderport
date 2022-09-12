@@ -74,7 +74,7 @@ def papermill_special(input_path, output_path, cwd, config_path, log_path, succe
 
     ignore_path = pathlib.Path(cwd) / "log/ignore_error"
     if ignore_path.exists():
-        print(f"Skip notebook {input_path} due to ignore flag.")
+        print(f"Skip notebook {output_path} due to ignore flag.")
         subprocess.run(f"touch {success_flag}", shell=True, check=True)
         return
 
@@ -93,7 +93,7 @@ def papermill_special(input_path, output_path, cwd, config_path, log_path, succe
     except subprocess.CalledProcessError as e:
         time.sleep(5)
         if ignore_path.exists():
-            print("Error ignored.")
+            print(f"Error ignored for {output_path}.")
             subprocess.run(f"touch {success_flag}", shell=True, check=True)
             return
         else:
