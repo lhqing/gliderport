@@ -113,7 +113,7 @@ def prepare_snakemake(
         this_template_dir.mkdir(parents=True, exist_ok=True)
         subprocess.run(f"cp -r {template_dir}/* {this_template_dir}", shell=True, check=True)
 
-        with open(this_template_dir / "groups.txt", "w") as f:
+        with open(work_dir / "groups.txt", "w") as f:
             f.write("\n".join(sub_df.index))
 
         record = {

@@ -20,6 +20,10 @@ GLIDER_PORT_PROJECT_BUCKET = "glider-port"
 logger = init_logger(__name__)
 
 
+def _sky_spot_launch():
+    return
+
+
 def _check_spot_controller_up():
     logger.info("Checking sky spot controller status")
     sky_status = sky_core.status(refresh=True, all=True)
