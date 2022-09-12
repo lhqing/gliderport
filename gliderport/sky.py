@@ -13,29 +13,33 @@ from sky.backends import backend_utils
 
 from .files import FileUploader
 from .log import init_logger
-from .utils import read_config, validate_name
+from .utils import CommandRunner, read_config, validate_name
 
 WORKER_REFRESH_CLOCK_INIT = 16
 GLIDER_PORT_PROJECT_BUCKET = "glider-port"
 
 logger = init_logger(__name__)
 
-
 # monkey patching to allow spot controller to run more jobs in parallel
 backend_utils.DEFAULT_TASK_CPU_DEMAND = 0.2
 
 
-def _sky_spot_launch(entrypoint, name):
+def _sky_spot_launch(entrypoint, name, **kwargs):
+    """Launch a managed spot job."""
     logger.info("Launching sky spot controller")
-    from sky.cli import spot_launch
 
-    spot_launch(
-        entrypoint,
-        name=name,
-        detach_run=True,
-        retry_until_up=True,
-        yes=True,
-    )
+    if name is None:
+        name = backend_utils.generate_cluster_name()
+    else:
+        backend_utils.check_cluster_name_is_valid(name)
+
+    from sky.cli import _make_dag_from_entrypoint_with_overrides
+
+    dag = _make_dag_from_entrypoint_with_overrides(entrypoint, name=name, **kwargs)
+
+    import sky
+
+    sky.spot_launch(dag, name, detach_run=True, retry_until_up=True)
     return
 
 
@@ -263,13 +267,10 @@ class _SpotWorker:
         else:
             pass
 
-        # cmd = f"sky spot launch -y -d -n {self.job_name} {temp_config_file.name} {retry_flag_str}"
-        # logger.info(f"Launching worker {self.worker_id}\n{cmd}")
-        logger.info(
-            f"Launching worker {self.worker_id} with " f"config {temp_config_file.name} and name {self.job_name}"
-        )
-        _sky_spot_launch(entrypoint=temp_config_file.name, name=self.job_name)
-        # CommandRunner(cmd, log_prefix=None, check=True, retry=2, env=None).run()
+        retry_flag_str = "--retry-until-up" if retry_until_up else ""
+        cmd = f"sky spot launch -y -d -n {self.job_name} {temp_config_file.name} {retry_flag_str}"
+        logger.info(f"Launching worker {self.worker_id}\n{cmd}")
+        CommandRunner(cmd, log_prefix=None, check=True, retry=2, env=None).run()
         return
 
     def check_launch(self, retry_until_up=True):
