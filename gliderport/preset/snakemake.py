@@ -3,6 +3,7 @@ import os
 import pathlib
 import subprocess
 
+import pandas as pd
 import yaml
 
 from .template import rander_preset_config
@@ -81,7 +82,7 @@ class RobustSnakemakeRunner:
 def prepare_snakemake(
     job_dir,
     template_dir,
-    groups_files,
+    groups,
     output_bucket,
     output_prefix,
     sky_template,
@@ -89,35 +90,44 @@ def prepare_snakemake(
     total_mem_gb=None,
     default_cpu=1,
     default_mem_gb=1,
+    batches=None,
 ):
     """Prepare snakemake cloud config."""
     job_dir = pathlib.Path(job_dir).resolve().absolute()
     job_dir.mkdir(parents=True, exist_ok=True)
     template_dir = pathlib.Path(template_dir).resolve().absolute()
 
-    if isinstance(groups_files, (str, pathlib.Path)):
-        groups_files = [groups_files]
+    if isinstance(groups, (str, pathlib.Path)):
+        groups = pd.read_csv(groups, header=None, index_col=None).squeeze().tolist()
 
-    # prepare job config
-    for groups_file in groups_files:
-        groups_file = pathlib.Path(groups_file).resolve().absolute()
-        group = groups_file.name
-        work_dir = job_dir / group
+    if batches is None:
+        batch_size = len(groups)
+    else:
+        batch_size = len(groups) // batches + 1
+
+    group_table = pd.Series({group: i // batch_size for i, group in enumerate(groups)})
+    for job_id, sub_df in group_table.groupby(group_table):
+        work_dir = job_dir / str(job_id)
         work_dir.mkdir(parents=True, exist_ok=True)
-        subprocess.run(f"cp -r {template_dir}/* {work_dir}/template/", shell=True, check=True)
+        this_template_dir = work_dir / "template"
+        this_template_dir.mkdir(parents=True, exist_ok=True)
+        subprocess.run(f"cp -r {template_dir}/* {this_template_dir}", shell=True, check=True)
+
+        with open(this_template_dir / "groups.txt", "w") as f:
+            f.write("\n".join(sub_df.index))
 
         record = {
             "work_dir": str(work_dir),
             "bucket": output_bucket,
-            "prefix": f"{output_prefix}/{group}",
+            "prefix": f"{output_prefix}/{job_id}",
             "total_jobs": total_jobs,
             "total_mem_gb": total_mem_gb,
             "default_cpu": default_cpu,
             "default_mem_gb": default_mem_gb,
         }
 
-        out_config = job_dir / f"{group}.config.yaml"
-        uploaded_config = job_dir / f"{group}.config.yaml_uploaded"
+        out_config = job_dir / f"{job_id}.config.yaml"
+        uploaded_config = job_dir / f"{job_id}.config.yaml_uploaded"
         if uploaded_config.exists():
             continue
         rander_preset_config("snakemake", out_config, **record)
@@ -128,6 +138,7 @@ def prepare_snakemake(
         sky_template = yaml.load(f, Loader=yaml.FullLoader)
         # remove the run section of template
         sky_template.pop("run", None)
+        sky_template["setup"] += "\n pip install git+https://github.com/lhqing/gliderport.git"
     with open(out_sky, "w") as f:
-        yaml.dump(sky_template, f)
+        yaml.dump(sky_template, f, default_style="|")
     return
