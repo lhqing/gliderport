@@ -66,7 +66,7 @@ class RobustSnakemakeRunner:
             f"-d {self.work_dir} "
             f"--snakefile {self.snakefile} "
             f"--cores {self.n_jobs} "
-            f"--resources mem_gb={self.n_mem_gb} "
+            f"--resources mem_gb={int(self.n_mem_gb)} "
             f"--rerun-incomplete "
             f"{'--keep-going' if self.keep_going else ''} "
             f"--latency-wait {self.latency_wait} "
