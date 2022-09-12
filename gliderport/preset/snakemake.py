@@ -27,7 +27,7 @@ class RobustSnakemakeRunner:
         n_mem_gb=None,
         retry=2,
         keep_going=True,
-        latency_wait=60,
+        latency_wait=10,
         sleep_after_fail=3600,
         check=False,
     ):

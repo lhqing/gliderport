@@ -93,6 +93,7 @@ def papermill_special(input_path, output_path, cwd, config_path, log_path, succe
         time.sleep(5)
         if ignore_path.exists():
             print("Error ignored.")
+            subprocess.run(f"touch {success_flag}", shell=True, check=True)
             return
         else:
             print(f"Ignore file: {log_path} not exist, raise error.")
