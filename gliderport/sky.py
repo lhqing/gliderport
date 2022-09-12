@@ -9,38 +9,16 @@ import pandas as pd
 import yaml
 from sky import core as sky_core
 from sky import exceptions as sky_exceptions
-from sky.backends import backend_utils
 
 from .files import FileUploader
 from .log import init_logger
 from .utils import CommandRunner, read_config, validate_name
 
-WORKER_REFRESH_CLOCK_INIT = 16
+DEFAULT_N_WORKERS = 16
+WORKER_REFRESH_CLOCK_INIT = 10
 GLIDER_PORT_PROJECT_BUCKET = "glider-port"
 
 logger = init_logger(__name__)
-
-# monkey patching to allow spot controller to run more jobs in parallel
-backend_utils.DEFAULT_TASK_CPU_DEMAND = 0.2
-
-
-def _sky_spot_launch(entrypoint, name, **kwargs):
-    """Launch a managed spot job."""
-    logger.info("Launching sky spot controller")
-
-    if name is None:
-        name = backend_utils.generate_cluster_name()
-    else:
-        backend_utils.check_cluster_name_is_valid(name)
-
-    from sky.cli import _make_dag_from_entrypoint_with_overrides
-
-    dag = _make_dag_from_entrypoint_with_overrides(entrypoint, name=name, **kwargs)
-
-    import sky
-
-    sky.spot_launch(dag, name, detach_run=True, retry_until_up=True)
-    return
 
 
 def _check_spot_controller_up():
@@ -308,7 +286,7 @@ class WorkerManager:
         sky_template_path,
         fs,
         worker_hash,
-        n_workers=16,
+        n_workers=DEFAULT_N_WORKERS,
         launch_timeout=600,
         max_idle_time=600,
         spot=True,
@@ -462,7 +440,7 @@ class GliderPort:
         self,
         local_job_dir,
         n_uploader=1,
-        n_worker=16,
+        n_worker=DEFAULT_N_WORKERS,
         max_idle_time=600,
         launch_timeout=600,
         use_hash=None,
@@ -520,7 +498,7 @@ class GliderPort:
         )
         self.job_config_prefix = "job_config"
 
-        self._worker_refresh_clock = n_worker
+        self._worker_refresh_clock = int(n_worker * 2)
         _sky_template = self.local_job_dir / "SKY_TEMPLATE.yaml"
         self.worker_manager = WorkerManager(
             port_bucket=self.bucket_name,
