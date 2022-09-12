@@ -28,5 +28,7 @@ python: |
     n_mem_gb={{ total_mem_gb }},
     retry=2,
     keep_going=True,
-    latency_wait=60
+    latency_wait=60,
+    sleep_after_fail=3600,
+    check=False
   ).run()

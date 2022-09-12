@@ -29,6 +29,7 @@ class RobustSnakemakeRunner:
         keep_going=True,
         latency_wait=60,
         sleep_after_fail=3600,
+        check=False,
     ):
         if n_jobs is None:
             self.n_jobs = multiprocessing.cpu_count()
@@ -51,6 +52,7 @@ class RobustSnakemakeRunner:
         self.keep_going = keep_going
         self.latency_wait = latency_wait
         self.sleep_after_fail = sleep_after_fail
+        self.check = check
 
     def _unlock(self):
         """Unlock Snakemake."""
@@ -62,6 +64,7 @@ class RobustSnakemakeRunner:
     def run(self):
         """Run Snakemake."""
         self._unlock()
+
         cmd = (
             f"snakemake "
             f"-d {self.work_dir} "
@@ -73,17 +76,23 @@ class RobustSnakemakeRunner:
             f"--latency-wait {self.latency_wait} "
             f"--restart-times {self.retry}"
         )
+
+        # here snakemake failures are not checked, result will be transfer to bucket anyway
         CommandRunner(
-            cmd, log_prefix=self.work_dir / "snakemake", check=True, retry=1, sleep_after_fail=self.sleep_after_fail
+            cmd,
+            log_prefix=self.work_dir / "snakemake",
+            check=self.check,
+            retry=1,
+            sleep_after_fail=self.sleep_after_fail,
         ).run()
+
+        self.cleanup()
         return
 
     def cleanup(self):
         """Cleanup Snakemake after run."""
-        path_to_rm = []
         snakemake_log_dir = self.work_dir / ".snakemake"
-        path_to_rm.append(snakemake_log_dir)
-
+        subprocess.run(f"rm -rf {snakemake_log_dir}", shell=True, check=True)
         return
 
 
