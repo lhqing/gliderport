@@ -1,3 +1,5 @@
+import time
+
 import click
 
 
@@ -88,10 +90,12 @@ def papermill_special(input_path, output_path, cwd, config_path, log_path, succe
             check=True,
         )
     except subprocess.CalledProcessError as e:
+        time.sleep(5)
         if ignore_path.exists():
             print("Error ignored.")
             return
         else:
+            print(f"Ignore file: {log_path} not exist, raise error.")
             raise e
     return
 
