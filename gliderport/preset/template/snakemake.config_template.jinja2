@@ -18,7 +18,7 @@ python: |
     groups='./groups.txt',
     default_cpu={{ default_cpu }},
     default_mem_gb={{ default_mem_gb }},
-    redo_prepare=True,
+    redo_prepare=False,
   )
 
   RobustSnakemakeRunner(

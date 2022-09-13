@@ -136,3 +136,26 @@ def validate_name(name):
             f"Name '{name}' is invalid; ensure it is fully matched " "by regex: [a-z0-9]([-a-z0-9]{0,61}[a-z0-9])?"
         )
     return
+
+
+def create_dirs_on_bucket(bucket_name, mount_name, prefix="/"):
+    """Create directories on GCS bucket."""
+    import pathlib
+
+    from gcsfs import GCSFileSystem
+
+    fs = GCSFileSystem()
+
+    # collect all dir paths in the bucket
+    wildcard = f"{bucket_name}/{prefix}/**/*"
+    wildcard = wildcard.replace("//", "/")
+    files = fs.glob(wildcard)
+    file_dirs = set()
+    for path in files:
+        file_dir = str(pathlib.Path(path).parent).replace(bucket_name, mount_name)
+        file_dirs.add(file_dir)
+
+    # create dirs
+    for p in file_dirs:
+        pathlib.Path(p).mkdir(exist_ok=True, parents=True)
+    return
