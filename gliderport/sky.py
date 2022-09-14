@@ -446,6 +446,7 @@ class GliderPort:
         use_hash=None,
         spot=True,
         retry_until_up=True,
+        pre_submit=2,
     ):
         """
         Initialize a glider port.
@@ -469,6 +470,8 @@ class GliderPort:
         retry_until_up :
             whether to retry until the spot job is up,
             if True, will use `--retry-until-up` flag in `sky spot launch`
+        pre_submit :
+            number of jobs per worker to submit before the first worker is up
         """
         self.local_job_dir = Path(local_job_dir).absolute().resolve()
         if use_hash is None:
@@ -498,7 +501,8 @@ class GliderPort:
         )
         self.job_config_prefix = "job_config"
 
-        self._worker_refresh_clock = int(n_worker * 2)
+        self.pre_submit = pre_submit
+        self._worker_refresh_clock = int(n_worker * pre_submit)
         _sky_template = self.local_job_dir / "SKY_TEMPLATE.yaml"
         self.worker_manager = WorkerManager(
             port_bucket=self.bucket_name,
@@ -543,7 +547,11 @@ class GliderPort:
             return
 
         timeout = 3600 * timeout_hour
+        first = True
         while True:
+            if first:
+                self._update_worker()
+                first = False
             logger.info(f"Job upload paused because all workers have >= {max_queue_jobs_per_worker} jobs to do.")
             time.sleep(600)
             timeout -= 600
@@ -574,6 +582,7 @@ class GliderPort:
         max_queue_jobs_per_worker :
             max number of jobs per worker in queue
         """
+        max_queue_jobs_per_worker = max(max_queue_jobs_per_worker, self.pre_submit) + 1
         max_idle_time = max_idle_hours * 3600
         idle_time = 0
         while True:
