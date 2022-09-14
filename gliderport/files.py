@@ -49,6 +49,15 @@ class GCSClient:
         # move multiple files to destination
         temp_name = cls._make_temp(file_list)
         m_option = "-m" if parallel else ""
+
+        destination_path = str(destination_path)
+        if destination_path[-1] != "/":
+            # this is important when transfer single file to GCS
+            # otherwise, the destination will be treated as a file rather than a directory
+            # and the file will be named as the last part of the path
+            # which is not what we want
+            destination_path += "/"
+
         cmd = f'cat "{temp_name}" | gsutil {m_option} cp -r -I "{destination_path}"'
         cls._run(cmd)
         # delete temp file

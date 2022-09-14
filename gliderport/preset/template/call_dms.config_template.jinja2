@@ -1,0 +1,28 @@
+delete_input: true
+input:
+  local:
+    - {{ groups_file }}
+output:
+  bucket: {{ output_bucket }}
+  prefix: {{ output_prefix }}
+python: |
+  from ALLCools.dmr.call_dms_baseds import call_dms_from_base_ds
+  call_dms_from_base_ds(
+    base_ds_path="{{ base_ds_path }}",
+    chrom="{{ chrom }}",
+    start=int({{ start }}),
+    end=int({{ end }}),
+    codebook_path="{{ codebook_path }}",
+    output_path="{{ chrom }}-{{ start }}-{{ end }}.zarr",
+    groups="{{ groups }}",
+    mcg_pattern="CGN",
+    cpu={{ cpu }},
+    n_permute=5000,
+    alpha=0.01,
+    max_row_count=80,
+    max_total_count=5000,
+    filter_sig=True,
+    merge_strand=True,
+    estimate_p=True,
+    mode="w"
+  )

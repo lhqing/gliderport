@@ -10,9 +10,14 @@ setup: |
   conda install -y mamba -n base -c conda-forge
   sleep 3
   which mamba
-  mamba install -y anndata pandas pybedtools pyBigWig pysam seaborn xarray htslib
+  mamba install -y anndata pandas pybedtools pyBigWig pysam seaborn xarray htslib dask zarr
   pip install git+https://github.com/lhqing/ALLCools.git
   pip install git+https://github.com/lhqing/gliderport.git
+
+file_mounts:
+  /input:
+    source: gs://{{ input_bucket }}/
+    mode: MOUNT
 
 # this part is added by GliderPort
 # run:
