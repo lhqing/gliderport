@@ -95,6 +95,7 @@ def prepare_mapping(
             "r1_paths": r1_paths,
             "r2_paths": r2_paths,
             "bucket": output_bucket,
+            "group": group,
             "prefix": f"{output_prefix}/{group}",
             "snakefile_cloud_path": snakefile_cloud_path,
             "mapping_yaml_path": mapping_yaml_path,

@@ -27,7 +27,11 @@ def prepare_call_loop(
     for group, sub_df in cell_table.groupby("group"):
         cell_table_path = f"{job_dir}/{group}.cell_table.csv"
         new_path_df = sub_df.copy()
-        new_path_df["cool_path"] = new_path_df["cool_path"].apply(lambda p: f"~/sky_workdir/{pathlib.Path(p).name}")
+
+        def _rename(p, _g=group):
+            return f"~/{_g}/{pathlib.Path(p).name}"
+
+        new_path_df["cool_path"] = new_path_df["cool_path"].apply(_rename)
         new_path_df.to_csv(cell_table_path, index=False, header=False)
 
         record = {
@@ -42,6 +46,7 @@ def prepare_call_loop(
             "cell_table_file_name": f"{group}.cell_table.csv",
             "chrom_size_file_name": pathlib.Path(chrom_size_path).name,
             "black_list_file_name": pathlib.Path(black_list_path).name,
+            "job_name": group,
             "n_cpu": _get_cpu_from_instance_name(instance),
         }
 

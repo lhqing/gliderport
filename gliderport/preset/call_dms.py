@@ -19,6 +19,8 @@ def prepare_call_dms(
     input_bucket,
     instance="n2d-standard-64",
     region="us-west1",
+    image_id=None,
+    disk_size=None,
 ):
     """Prepare call DMS cloud config."""
     job_dir = pathlib.Path(job_dir)
@@ -53,5 +55,12 @@ def prepare_call_dms(
 
     # prepare sky template
     out_sky = job_dir / "SKY_TEMPLATE.yaml"
-    rander_preset_sky("call_dms", out_sky, instance=instance, region=region, input_bucket=input_bucket)
+    vm_record = {
+        "instance": instance,
+        "region": region,
+        "image_id": image_id,
+        "disk_size": disk_size,
+        "input_bucket": input_bucket,
+    }
+    rander_preset_sky("call_dms", out_sky, **vm_record)
     return

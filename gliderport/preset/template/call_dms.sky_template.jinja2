@@ -2,6 +2,12 @@ resources:
   cloud: gcp
   instance_type: {{instance}}
   region: {{region}}
+  {% if image_id %}
+  image_id: {{image_id}}
+  {% endif %}
+  {% if disk_size %}
+  disk_size: {{disk_size}}
+  {% endif %}
 
 setup: |
   conda config --add channels defaults

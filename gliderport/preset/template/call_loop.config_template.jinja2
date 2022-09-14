@@ -23,7 +23,7 @@ python: |
   call_loop(
       cell_table_path='{{ cell_table_file_name }}',
       output_dir='{{ output_dir }}',
-      chrom_size_path=os.path.expanduser('~/sky_workdir/{{ chrom_size_file_name }}'),
+      chrom_size_path=os.path.expanduser('~/{{ job_name }}/{{ chrom_size_file_name }}'),
       shuffle=True,
       chunk_size=200,
       dist=5050000,
@@ -37,7 +37,7 @@ python: |
       log_e=True,
       raw_resolution_str=None,
       downsample_shuffle=None,
-      black_list_path=os.path.expanduser('~/sky_workdir/{{ black_list_file_name }}'),
+      black_list_path=os.path.expanduser('~/{{ job_name }}/{{ black_list_file_name }}'),
       fdr_pad=7,
       fdr_min_dist=5,
       fdr_max_dist=500,

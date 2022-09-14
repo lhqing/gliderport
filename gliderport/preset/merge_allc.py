@@ -43,6 +43,7 @@ def prepare_merge_allc(
             "chrom_size_cloud_path": chrom_size_cloud_path,
             "output_name": f"{group}.allc.tsv.gz",
             "allc_paths": sub_df["allc_path"].tolist(),
+            "group": group,
             "cpu": _get_cpu_from_instance_name(instance) if merge_allc_cpu is None else merge_allc_cpu,
         }
 
