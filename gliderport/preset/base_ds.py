@@ -46,6 +46,7 @@ def prepare_base_ds(
         for group, sub_df in allc_table.groupby("group"):
             job_name = f"{group}_{chrom}"
             allc_table_path = f"{job_dir}/{job_name}.allc_table.csv"
+            sub_df["allc_path"] = sub_df["allc_path"].apply(lambda x: str(x).replace(input_bucket, "/input"))
             sub_df[["sample_id", "allc_path"]].to_csv(allc_table_path, index=False, header=False)
             base_ds_path = f"/output/{output_prefix}/{group}.baseds"
             record = {
