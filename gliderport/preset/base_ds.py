@@ -56,6 +56,7 @@ def prepare_base_ds(
                 "allc_table_name": pathlib.Path(allc_table_path).name,
                 "pos_chunk": pos_chunk,
                 "sample_chunk": sample_chunk,
+                "job_name": job_name,
                 "n_cpu": _get_cpu_from_instance_name(instance),
             }
 
