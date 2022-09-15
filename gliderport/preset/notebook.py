@@ -67,7 +67,10 @@ def notebook_snakemake(work_dir, notebook_dir, groups, default_cpu=1, default_me
 
     """
     work_dir = pathlib.Path(work_dir).resolve().absolute()
+    work_dir.mkdir(exist_ok=True, parents=True)
+
     work_dir = str(work_dir).rstrip("/")
+
     snakefile_path = pathlib.Path(work_dir) / "Snakefile"
     if snakefile_path.exists() and not redo_prepare:
         print(f"Snakefile already exists at {snakefile_path}, skip.")
