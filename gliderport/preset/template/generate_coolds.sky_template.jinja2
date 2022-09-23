@@ -1,0 +1,24 @@
+resources:
+  cloud: gcp
+  instance_type: {{instance}}
+  region: {{region}}
+  {% if image_id %}
+  image_id: {{image_id}}
+  {% endif %}
+  {% if disk_size %}
+  disk_size: {{disk_size}}
+  {% endif %}
+
+
+setup: |
+  which mamba
+  pip install git+https://github.com/zhoujt1994/scHiCluster.git
+  pip install git+https://github.com/lhqing/gliderport.git
+
+file_mounts:
+  /input:
+    source: gs://{{ input_bucket }}/
+    mode: MOUNT
+  /output:
+    source: gs://{{ output_bucket }}/
+    mode: MOUNT

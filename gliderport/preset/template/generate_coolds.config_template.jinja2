@@ -1,0 +1,20 @@
+delete_input: true
+input:
+  local:
+    {% for cool_path in cool_paths %}- {{ cool_path }}
+    {% endfor %}
+    - {{ cool_table }}
+    - {{ chrom_size_file }}
+python: |
+  from schicluster.zarr import generate_cool_ds
+  generate_cool_ds(output_dir="{{ cool_ds_path }}",
+                   cool_table_path="~/{{ job_name }}/{{ cool_table_name }}",
+                   value_types={{ value_types }},
+                   chrom_sizes_path='~/{{ job_name }}/{{ chrom_size_file_name }}',
+                   trans_matrix={{ trans_matrix }},
+                   mode='w',
+                   cooler_bin_size=10000,
+                   bin_chunk_size=510,
+                   sample_chunk_size={{ sample_chunk }},
+                   data_dtype='float32',
+                   cpu={{ n_cpu }})
