@@ -130,17 +130,20 @@ def prepare_snakemake(
         this_template_dir.mkdir(parents=True, exist_ok=True)
         subprocess.run(f"cp -r {template_dir}/* {this_template_dir}", shell=True, check=True)
 
-        with open(work_dir / "groups.txt", "w") as f:
+        groups_path = work_dir / "groups.txt"
+        with open(groups_path, "w") as f:
             f.write("\n".join(sub_df.index))
 
         record = {
-            "work_dir": str(work_dir),
+            "groups_path": str(groups_path),
+            "templates_path": str(this_template_dir),
             "bucket": output_bucket,
             "prefix": f"{output_prefix}/{job_id}",
             "total_jobs": total_jobs,
             "total_mem_gb": total_mem_gb,
             "default_cpu": default_cpu,
             "default_mem_gb": default_mem_gb,
+            "job_id": job_id,
         }
 
         out_config = job_dir / f"{job_id}.config.yaml"

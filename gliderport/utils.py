@@ -57,19 +57,26 @@ def read_config(config_file, input_mode=None):
 class CommandRunner:
     """Run command using subprocess.run()."""
 
-    def __init__(self, command, log_prefix, check=False, retry=2, env=None, sleep_after_fail=0):
+    def __init__(self, command, log_prefix, check=False, retry=2, env=None, sleep_after_fail=0, timeout=None):
         self.command = command
         self.log_prefix = log_prefix
         self.check = check
         self.env = env
         self.retry = retry
         self.sleep_after_fail = sleep_after_fail
+        self.timeout = timeout
 
     def _run(self, run_id):
         try:
             logger.info(f"Running command: {self.command}")
             p = subprocess.run(
-                self.command, shell=True, capture_output=True, check=True, encoding="utf-8", env=self.env
+                self.command,
+                shell=True,
+                capture_output=True,
+                check=True,
+                encoding="utf-8",
+                env=self.env,
+                timeout=self.timeout,
             )
             self._save_info(p, run_id)
             return True
@@ -138,9 +145,10 @@ def validate_name(name):
     return
 
 
-def create_dirs_on_bucket(bucket_name, mount_name, prefix="/"):
+def create_dirs_on_bucket(bucket_name, mount_name, prefix="/", cpu=30):
     """Create directories on GCS bucket."""
     import pathlib
+    from concurrent.futures import ProcessPoolExecutor, as_completed
 
     from gcsfs import GCSFileSystem
 
@@ -155,7 +163,18 @@ def create_dirs_on_bucket(bucket_name, mount_name, prefix="/"):
         file_dir = str(pathlib.Path(path).parent).replace(bucket_name, mount_name)
         file_dirs.add(file_dir)
 
-    # create dirs
-    for p in file_dirs:
-        pathlib.Path(p).mkdir(exist_ok=True, parents=True)
+    def _create_dirs(paths):
+        # create dirs
+        for p in paths:
+            pathlib.Path(p).mkdir(exist_ok=True, parents=True)
+
+    file_dirs = list(file_dirs)
+    with ProcessPoolExecutor(cpu) as exe:
+        futures = []
+        chunk_size = 100
+        for i in range(0, len(file_dirs), chunk_size):
+            paths = file_dirs[i : i + chunk_size]
+            futures.append(exe.submit(_create_dirs, paths))
+        for future in as_completed(futures):
+            future.result()
     return

@@ -1,7 +1,8 @@
 delete_input: true
 input:
   local:
-    - {{ work_dir }}
+    - {{ groups_path }}
+    - {{ templates_path }}
 output:
   bucket: {{ bucket }}
   prefix: {{ prefix }}
@@ -10,7 +11,7 @@ python: |
   import pathlib
   cwd = pathlib.Path()
   print(cwd.absolute())
-  print(list(cwd.glob("*")))
+  print(list(cwd.glob("**/*")))
 
   notebook_snakemake(
     work_dir='./',

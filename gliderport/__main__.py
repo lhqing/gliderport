@@ -50,10 +50,18 @@ def vm_worker(bucket, prefix, max_idle_time, cleanup):
 @click.option(
     "--pre_submit", required=False, default=2, help="number of jobs per worker to submit before the first worker is up"
 )
-def port(local_job_dir, n_uploader=1, n_worker=16, max_idle_hours=100, use_hash=None, parallel=True, pre_submit=2):
+@click.option("--debug", required=False, default=None, help="Debug N number of jobs to test")
+def port(
+    local_job_dir, n_uploader=1, n_worker=16, max_idle_hours=100, use_hash=None, parallel=True, pre_submit=2, debug=None
+):
     """Run a glider port on-prem."""
     gp = GliderPort(
-        local_job_dir=local_job_dir, n_uploader=n_uploader, n_worker=n_worker, use_hash=use_hash, pre_submit=pre_submit
+        local_job_dir=local_job_dir,
+        n_uploader=n_uploader,
+        n_worker=n_worker,
+        use_hash=use_hash,
+        pre_submit=pre_submit,
+        debug=debug,
     )
     gp.run(max_idle_hours=max_idle_hours, gsutil_parallel=parallel)
     return

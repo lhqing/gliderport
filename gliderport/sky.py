@@ -71,11 +71,12 @@ class _JobListener:
     Listen to a directory for new job files, start data uploader and return job_id when file is ready on GCS.
     """
 
-    def __init__(self, local_job_dir, port_bucket, port_prefix, n_jobs=1):
+    def __init__(self, local_job_dir, port_bucket, port_prefix, n_jobs=1, debug=None):
         self.local_job_dir = local_job_dir
         self.port_bucket = port_bucket
         self.port_prefix = port_prefix
         self.n_jobs = n_jobs
+        self.debug = debug
 
     def get_job_configs(self) -> pd.Series:
         """Get all jobs in local_job_dir."""
@@ -107,6 +108,8 @@ class _JobListener:
     def upload_and_get_config_path(self, gsutil_parallel):
         """Upload all jobs in current local_job_dir."""
         job_configs = self.get_job_configs()
+        if self.debug is not None:
+            job_configs = job_configs.iloc[: self.debug]
 
         total_jobs = len(job_configs)
         for i, (job_id, local_config_path) in enumerate(job_configs.items()):
@@ -447,6 +450,7 @@ class GliderPort:
         spot=True,
         retry_until_up=True,
         pre_submit=2,
+        debug=None,
     ):
         """
         Initialize a glider port.
@@ -498,6 +502,7 @@ class GliderPort:
             port_bucket=self.bucket_name,
             n_jobs=n_uploader,
             port_prefix=self.port_prefix,
+            debug=debug,
         )
         self.job_config_prefix = "job_config"
 
@@ -585,6 +590,7 @@ class GliderPort:
         max_queue_jobs_per_worker = max(max_queue_jobs_per_worker, self.pre_submit) + 1
         max_idle_time = max_idle_hours * 3600
         idle_time = 0
+
         while True:
             jobs_deposited_in_this_loop = 0
             for job_id, config_path, local_config_path in self.job_listener.upload_and_get_config_path(gsutil_parallel):
