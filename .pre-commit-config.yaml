@@ -43,8 +43,8 @@ repos:
             args: [--fix=lf]
           - id: trailing-whitespace
           - id: check-case-conflict
-    - repo: https://github.com/myint/autoflake
-      rev: v1.5.3
+    - repo: https://github.com/PyCQA/autoflake
+      rev: v1.6.1
       hooks:
           - id: autoflake
             args:
@@ -64,7 +64,7 @@ repos:
                 - flake8-bugbear
                 - flake8-blind-except
     - repo: https://github.com/asottile/pyupgrade
-      rev: v2.37.3
+      rev: v2.38.2
       hooks:
           - id: pyupgrade
             args: [--py3-plus, --py38-plus, --keep-runtime-typing]
