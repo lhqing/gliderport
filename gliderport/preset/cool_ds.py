@@ -11,7 +11,6 @@ def prepare_cool_ds(
     cool_table_csv,
     chrom_size_path,
     value_types,
-    input_bucket,
     output_bucket,
     output_prefix,
     trans_matrix=False,
@@ -37,12 +36,12 @@ def prepare_cool_ds(
     for group, sub_df in cool_table.groupby("group"):
         job_name = group
         cool_table_path = f"{job_dir}/{job_name}.cool_table.csv"
-
-        sub_df["path"] = f"~/{job_name}/" + sub_df["path"].apply(lambda x: pathlib.Path(x).name)
+        original_paths = sub_df["path"].tolist()
+        sub_df["path"] = "./" + sub_df["path"].apply(lambda x: pathlib.Path(x).name)
         sub_df[["sample", "value_type", "path", "cool_type"]].to_csv(cool_table_path, index=False, header=False)
         cool_ds_path = f"/output/{output_prefix}/{group}.coolds"
         record = {
-            "cool_paths": sub_df["path"].tolist(),
+            "cool_paths": original_paths,
             "cool_table": cool_table_path,
             "chrom_size_file": chrom_size_path,
             "cool_ds_path": cool_ds_path,
@@ -68,7 +67,6 @@ def prepare_cool_ds(
         "region": region,
         "image_id": image_id,
         "disk_size": disk_size,
-        "input_bucket": input_bucket,
         "output_bucket": output_bucket,
     }
     rander_preset_sky("generate_coolds", out_sky, **record)

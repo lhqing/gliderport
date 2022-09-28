@@ -11,14 +11,17 @@ resources:
 
 
 setup: |
+  conda config --add channels defaults
+  conda config --add channels bioconda
+  conda config --add channels conda-forge
+  conda install -y mamba -n base -c conda-forge
+  sleep 3
   which mamba
+  mamba install -y anndata pandas pybedtools pyBigWig pysam seaborn xarray zarr=2.12 htslib rpy2 dask scipy scikit-learn h5py joblib pytables statsmodels numcodecs
   pip install git+https://github.com/zhoujt1994/scHiCluster.git
   pip install git+https://github.com/lhqing/gliderport.git
 
 file_mounts:
-  /input:
-    source: gs://{{ input_bucket }}/
-    mode: MOUNT
   /output:
     source: gs://{{ output_bucket }}/
     mode: MOUNT
