@@ -24,7 +24,7 @@ def merge_allc(
     merge_allc_cpu=48,
     instance="n2d-standard-48",
     region="us-west1",
-    port_idle_hours=100,
+    port_idle_hours=1,
     use_hash=None,
     spot=True,
     n_uploader=1,

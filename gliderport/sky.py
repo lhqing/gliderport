@@ -574,7 +574,7 @@ class GliderPort:
                 )
         return
 
-    def run(self, max_idle_hours=100, gsutil_parallel=True, max_queue_jobs_per_worker=15):
+    def run(self, max_idle_hours=1, gsutil_parallel=True, max_queue_jobs_per_worker=15):
         """
         Run GliderPort on-prime.
 
