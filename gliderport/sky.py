@@ -1,5 +1,6 @@
 import enum
 import random
+import re
 import time
 from pathlib import Path
 from tempfile import NamedTemporaryFile
@@ -71,12 +72,11 @@ class _JobListener:
     Listen to a directory for new job files, start data uploader and return job_id when file is ready on GCS.
     """
 
-    def __init__(self, local_job_dir, port_bucket, port_prefix, n_jobs=1, debug=None):
+    def __init__(self, local_job_dir, port_bucket, port_prefix, n_jobs=1):
         self.local_job_dir = local_job_dir
         self.port_bucket = port_bucket
         self.port_prefix = port_prefix
         self.n_jobs = n_jobs
-        self.debug = debug
 
     def get_job_configs(self) -> pd.Series:
         """Get all jobs in local_job_dir."""
@@ -108,8 +108,6 @@ class _JobListener:
     def upload_and_get_config_path(self, gsutil_parallel):
         """Upload all jobs in current local_job_dir."""
         job_configs = self.get_job_configs()
-        if self.debug is not None:
-            job_configs = job_configs.iloc[: self.debug]
 
         total_jobs = len(job_configs)
         for i, (job_id, local_config_path) in enumerate(job_configs.items()):
@@ -402,9 +400,11 @@ class WorkerManager:
 
     def _update_spot_worker_status(self):
         spot_jobs = _check_spot_status()
+
+        worker_name_pattern = re.compile(f"worker-{self._worker_hash}-\\d+")
         for job in spot_jobs:
             job_name = job["job_name"]
-            if not job_name.startswith(f"worker-{self._worker_hash}-"):
+            if worker_name_pattern.match(job_name) is None:
                 # not a gp-worker job under this manager
                 continue
 
@@ -481,6 +481,8 @@ class GliderPort:
         if use_hash is None:
             self.gliderport_hash = _get_hash(add_date=True)
         else:
+            if len(use_hash) > 20:
+                raise ValueError(f"The provided string {use_hash} is too long, it must be shorter than 20 characters.")
             logger.info(f"Using user provided hash: {use_hash}")
             self.gliderport_hash = use_hash
 
@@ -497,12 +499,12 @@ class GliderPort:
                 "set the region and permission properly."
             )
 
+        self.debug = int(debug) if debug is not None else None
         self.job_listener = _JobListener(
             local_job_dir=self.local_job_dir,
             port_bucket=self.bucket_name,
             n_jobs=n_uploader,
             port_prefix=self.port_prefix,
-            debug=debug,
         )
         self.job_config_prefix = "job_config"
 
@@ -601,6 +603,12 @@ class GliderPort:
                 )
                 flag = self.worker_manager.deposit_job(job_id, config_path)
                 jobs_deposited_in_this_loop += flag
+                if isinstance(self.debug, int):
+                    self.debug -= flag
+                    if self.debug <= 0:
+                        logger.info("Debug mode finished.")
+                        self._update_worker()
+                        return
 
                 logger.info(f"{local_config_path} uploaded")
                 # change local_config_path to uploaded config_path
