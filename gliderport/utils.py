@@ -148,7 +148,6 @@ def validate_name(name):
 def create_dirs_on_bucket(bucket_name, mount_name, prefix="/", cpu=30):
     """Create directories on GCS bucket."""
     import pathlib
-    from concurrent.futures import ProcessPoolExecutor, as_completed
 
     from gcsfs import GCSFileSystem
 
@@ -163,18 +162,9 @@ def create_dirs_on_bucket(bucket_name, mount_name, prefix="/", cpu=30):
         file_dir = str(pathlib.Path(path).parent).replace(bucket_name, mount_name)
         file_dirs.add(file_dir)
 
-    def _create_dirs(paths):
-        # create dirs
-        for p in paths:
-            pathlib.Path(p).mkdir(exist_ok=True, parents=True)
-
     file_dirs = list(file_dirs)
-    with ProcessPoolExecutor(cpu) as exe:
-        futures = []
-        chunk_size = 100
-        for i in range(0, len(file_dirs), chunk_size):
-            paths = file_dirs[i : i + chunk_size]
-            futures.append(exe.submit(_create_dirs, paths))
-        for future in as_completed(futures):
-            future.result()
+    from tqdm import tqdm
+
+    for path in tqdm(file_dirs):
+        pathlib.Path(path).mkdir(exist_ok=True, parents=True)
     return
