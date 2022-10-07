@@ -1,6 +1,6 @@
 # gliderport
 
-Launch jobs on sky
+Launch jobs on [skypilot](https://skypilot.readthedocs.io/en/latest/)
 
 ![gliderport drawio](https://user-images.githubusercontent.com/29302823/192675631-7b290bb4-fc52-419f-8860-830038e8be11.png)
 
