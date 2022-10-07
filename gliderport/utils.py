@@ -85,6 +85,7 @@ class CommandRunner:
             logger.error(e.output)
             logger.error(e.stderr)
             self._save_info(e, run_id)
+            time.sleep(self.sleep_after_fail)
             return False
 
     def _save_info(self, obj, run_id):
@@ -117,11 +118,11 @@ class CommandRunner:
             if flag:
                 success = True
                 break
-        if not success and self.check:
+        if not success:
             if self.log_prefix is not None:
                 logger.error(f"Check logs at {self.log_prefix}.std*.log")
-            time.sleep(self.sleep_after_fail)
-            raise ValueError(f"Failed to run command {self.command} after {self.retry} retries.")
+            if self.check:
+                raise ValueError(f"Failed to run command {self.command} after {self.retry} retries.")
         return success
 
 
@@ -145,7 +146,7 @@ def validate_name(name):
     return
 
 
-def create_dirs_on_bucket(bucket_name, mount_name, prefix="/", cpu=30):
+def create_dirs_on_bucket(bucket_name, mount_name, prefix="/"):
     """Create directories on GCS bucket."""
     import pathlib
 
