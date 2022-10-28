@@ -1,5 +1,7 @@
+import os
 import pathlib
 import re
+import shutil
 
 import nbformat as nbf
 import pandas as pd
@@ -45,7 +47,9 @@ def _parse_workdir_notebooks(notebook_dir, default_cpu=1, default_mem_gb=1):
     return nb_records
 
 
-def notebook_snakemake(work_dir, notebook_dir, groups, default_cpu=1, default_mem_gb=1, redo_prepare=False):
+def notebook_snakemake(
+    work_dir, notebook_dir, groups, group_files=None, default_cpu=1, default_mem_gb=1, redo_prepare=False
+):
     """
     Prepare snakemake file for running a series of notebooks in multiple groups.
 
@@ -58,6 +62,9 @@ def notebook_snakemake(work_dir, notebook_dir, groups, default_cpu=1, default_me
     groups :
         A list of groups, each group will have its own sub-dir in the work_dir, and run through the notebook series.
         If a single file path is given, each row in the file will be treated as a group.
+    group_files :
+        A dict of file paths, file paths as key, group name as value. This parameter allows providing
+        group-specific file. Each file will be copied to the corresponding group sub-dir.
     default_cpu :
         Default cpu for each notebook.
     default_mem_gb :
@@ -66,12 +73,26 @@ def notebook_snakemake(work_dir, notebook_dir, groups, default_cpu=1, default_me
         If True, will re-generate the snakemake file even if it already exists.
 
     """
+    # TODO: how to allow group specific resources?
+    #     group_resources :
+    #         A dict of dicts, group name as key, and a dict of resources as value. This parameter allows group-specific
+    #         resource allocation, will override the default resource allocation or the resource allocation specified in
+    #         the notebook.
     work_dir = pathlib.Path(work_dir).resolve().absolute()
     work_dir.mkdir(exist_ok=True, parents=True)
+    snakefile_path = work_dir / "Snakefile"
+    _local_notebook_dir = work_dir / "notebooks"
+    _local_notebook_dir.mkdir(exist_ok=True)
 
-    work_dir = str(work_dir).rstrip("/")
+    # copy all notebooks into _local_notebook_dir
+    for path in pathlib.Path(notebook_dir).glob("*.ipynb"):
+        shutil.copy(path, _local_notebook_dir)
+    notebook_dir = _local_notebook_dir
 
-    snakefile_path = pathlib.Path(work_dir) / "Snakefile"
+    # chdir to work_dir
+    previous_cwd = os.getcwd()
+    os.chdir(work_dir)
+
     if snakefile_path.exists() and not redo_prepare:
         print(f"Snakefile already exists at {snakefile_path}, skip.")
         return
@@ -92,10 +113,10 @@ rule {rule_name}:
     params:
         input_nb="{nb_path}"
     output:
-        "{work_dir}/{{group_name}}/log/{rule_name}.success"
+        "{{group_name}}/log/{rule_name}.success"
     log:
-        output_nb="{work_dir}/{{group_name}}/{nb_name}",
-        log="{work_dir}/{{group_name}}/log/{nb_name}.log"
+        output_nb="{{group_name}}/{nb_name}",
+        log="{{group_name}}/log/{nb_name}.log"
     threads:
         {cpu}
     resources:
@@ -104,8 +125,8 @@ rule {rule_name}:
         "glider-preset papermill "
         "--input_path {{params.input_nb}} "
         "--output_path {{log.output_nb}} "
-        "--config_path {work_dir}/{{wildcards.group_name}}/log/{rule_name}.config.yaml "
-        "--cwd {work_dir}/{{wildcards.group_name}} "
+        "--config_path {{wildcards.group_name}}/log/{rule_name}.config.yaml "
+        "--cwd {{wildcards.group_name}} "
         "--log_path {{log.log}} "
         "--success_flag {{output}} "
 """
@@ -119,10 +140,6 @@ rule {rule_name}:
         for _, row in sub_df.iterrows():
             _, sub_step, nb_path, parameters = row
 
-            # save parameters
-            cpu = parameters.get("cpu", default_cpu)
-            mem_gb = parameters.get("mem_gb", default_mem_gb)
-
             rule_name = f"step_{num_step}{sub_step}"
             nb_name = pathlib.Path(nb_path).name
             if previous_rule_names is None:
@@ -130,9 +147,13 @@ rule {rule_name}:
             else:
                 input_files = []
                 for _rn in previous_rule_names:
-                    input_files.append(f'"{work_dir}/{{group_name}}/log/{_rn}.success"')
+                    input_files.append(f'"{{group_name}}/log/{_rn}.success"')
                 input_pattern = ", ".join(input_files)
             step_rule_names.append(rule_name)
+
+            # resource parameters
+            cpu = parameters.get("cpu", default_cpu)
+            mem_gb = parameters.get("mem_gb", default_mem_gb)
 
             rule_str = rule_template.format(
                 rule_name=rule_name,
@@ -141,7 +162,6 @@ rule {rule_name}:
                 nb_name=nb_name,
                 cpu=cpu,
                 mem_gb=mem_gb,
-                work_dir=work_dir,
             )
             snakemake_str += rule_str
         previous_rule_names = step_rule_names
@@ -154,9 +174,9 @@ groups = {groups}
 rule final:
     input:
         # target the final rule success flag of each group
-        expand('{work_dir}/{{group_name}}/log/{rule_name}.success', group_name=groups)
+        expand('{{group_name}}/log/{rule_name}.success', group_name=groups)
     output:
-        "{work_dir}/Snakemake.success"
+        "Snakemake.success"
     shell:
         # create a final success flag
         "touch {{output}}"
@@ -168,7 +188,7 @@ rule final:
 
     # write parameters
     for group in groups:
-        group_log_dir = pathlib.Path(f"{work_dir}/{group}/log")
+        group_log_dir = pathlib.Path(f"{group}/log")
         group_log_dir.mkdir(exist_ok=True, parents=True)
 
         for _, (num_step, sub_step, _, parameters) in nb_records.iterrows():
@@ -176,4 +196,12 @@ rule final:
             config_path = group_log_dir / f"step_{num_step}{sub_step}.config.yaml"
             with open(config_path, "w") as f:
                 yaml.dump(parameters, f)
+
+        # copy group files
+        if group_files is not None:
+            for file_path, g in group_files.items():
+                file_path = pathlib.Path(file_path)
+                shutil.copy(file_path, f"{g}/")
+
+    os.chdir(previous_cwd)
     return
