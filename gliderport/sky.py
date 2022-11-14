@@ -37,7 +37,7 @@ def _check_spot_controller_up():
 def _check_spot_status():
     try:
         logger.info("Checking sky spot jobs status")
-        sky_spot_status = sky_core.spot_status(refresh=True)
+        sky_spot_status = sky_core.spot_queue(refresh=True)
     except sky_exceptions.ClusterNotUpError:
         sky_spot_status = []
     return sky_spot_status
