@@ -81,7 +81,7 @@ class _JobListener:
     def get_job_configs(self) -> pd.Series:
         """Get all jobs in local_job_dir."""
         configs = {".".join(p.name.split(".")[:-2]): p for p in self.local_job_dir.glob("*.config.yaml")}
-        job_configs = pd.Series(configs).sort_index()
+        job_configs = pd.Series(configs, dtype="object").sort_index()
         return job_configs
 
     def _parse_job_config(self, job_id, config_path):
