@@ -1,6 +1,7 @@
 import enum
 import random
 import re
+import subprocess
 import time
 from pathlib import Path
 from tempfile import NamedTemporaryFile
@@ -17,9 +18,20 @@ from .utils import CommandRunner, read_config, validate_name
 
 DEFAULT_N_WORKERS = 16
 WORKER_REFRESH_CLOCK_INIT = 10
-GLIDER_PORT_PROJECT_BUCKET = "glider-port"
 
 logger = init_logger(__name__)
+
+
+def _get_gcp_project_bucket():
+    # get the project id from the gcloud config
+    cmd = "gcloud config get-value project"
+    gcp_project = subprocess.run(cmd, shell=True, stdout=subprocess.PIPE, encoding="utf8").stdout.strip()
+
+    bucket_name = f"{gcp_project}-glider-port"
+    return bucket_name
+
+
+GLIDER_PORT_PROJECT_BUCKET = _get_gcp_project_bucket()
 
 
 def _check_spot_controller_up():
