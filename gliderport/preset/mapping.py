@@ -9,7 +9,7 @@ R1_PATTERN = re.compile("((R1)|(r1)).((fastq)|(fq))(.gz){0,1}")
 R2_PATTERN = re.compile("((R2)|(r2)).((fastq)|(fq))(.gz){0,1}")
 
 
-def _make_fastq_table_from_library_dirs(library_dirs):
+def _make_fastq_table_from_library_dirs(library_dirs, auto_group_size):
     if isinstance(library_dirs, (str, pathlib.Path)):
         library_dirs = [library_dirs]
 
@@ -20,10 +20,10 @@ def _make_fastq_table_from_library_dirs(library_dirs):
             raise ValueError(f"Library dir {library_dir} does not exist.")
         fastq_dirs = list(library_dir.glob("*/fastq"))
         _fastq_dirs += fastq_dirs
-    return _make_fastq_table_from_fastq_dirs(_fastq_dirs)
+    return _make_fastq_table_from_fastq_dirs(_fastq_dirs, auto_group_size=auto_group_size)
 
 
-def _make_fastq_table_from_fastq_dirs(fastq_dirs):
+def _make_fastq_table_from_fastq_dirs(fastq_dirs, auto_group_size):
     if isinstance(fastq_dirs, (str, pathlib.Path)):
         fastq_dirs = [fastq_dirs]
 
@@ -39,7 +39,11 @@ def _make_fastq_table_from_fastq_dirs(fastq_dirs):
             cell_id = "-".join(cell_id)
             fastq_collection[read_type][cell_id] = str(fastq_path)
     fastq_table = pd.DataFrame.from_dict(fastq_collection).dropna()
-    fastq_table["group"] = fastq_table["R1"].apply(lambda x: pathlib.Path(x).parent.parent.name)
+    if auto_group_size is None:
+        fastq_table["group"] = fastq_table["R1"].apply(lambda x: pathlib.Path(x).parent.parent.name)
+    else:
+        fastq_table["group"] = [i // auto_group_size for i in range(fastq_table.shape[0])]
+        fastq_table["group"] = fastq_table["group"].apply(lambda i: f"mapping_{i:06d}")
     return fastq_table
 
 
@@ -53,8 +57,8 @@ def prepare_mapping(
     library_dirs=None,
     fastq_dirs=None,
     fastq_table=None,
-    auto_group_size=64,
-    instance="n2d-highcpu-64",
+    auto_group_size=32,
+    instance="n2d-highcpu-96",
     region="us-west1",
     mapping_yaml_path="../mapping.yaml",
 ):
@@ -65,9 +69,9 @@ def prepare_mapping(
     # prepare fastq table
     if fastq_table is None:
         if library_dirs is not None:
-            fastq_table = _make_fastq_table_from_library_dirs(library_dirs)
+            fastq_table = _make_fastq_table_from_library_dirs(library_dirs, auto_group_size=auto_group_size)
         elif fastq_dirs is not None:
-            fastq_table = _make_fastq_table_from_fastq_dirs(fastq_dirs)
+            fastq_table = _make_fastq_table_from_fastq_dirs(fastq_dirs, auto_group_size=auto_group_size)
         else:
             raise ValueError("One of fastq_table or fastq_dirs or library_dirs must be provided.")
     else:
