@@ -107,6 +107,7 @@ def prepare_snakemake(
     total_mem_gb=None,
     default_cpu=1,
     default_mem_gb=1,
+    sleep_after_fail=60,
     batches=None,
 ):
     """Prepare snakemake cloud config."""
@@ -144,6 +145,7 @@ def prepare_snakemake(
             "default_cpu": default_cpu,
             "default_mem_gb": default_mem_gb,
             "job_id": job_id,
+            "sleep_after_fail": sleep_after_fail,
         }
 
         out_config = job_dir / f"{job_id}.config.yaml"

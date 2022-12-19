@@ -30,6 +30,6 @@ python: |
     retry=2,
     keep_going=True,
     latency_wait=20,
-    sleep_after_fail=3600,
+    sleep_after_fail={{ sleep_after_fail }},
     check=False
   ).run()
