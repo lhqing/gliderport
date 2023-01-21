@@ -78,8 +78,8 @@ def notebook_snakemake(
     #         A dict of dicts, group name as key, and a dict of resources as value. This parameter allows group-specific
     #         resource allocation, will override the default resource allocation or the resource allocation specified in
     #         the notebook.
-    work_dir = pathlib.Path(work_dir).resolve().absolute()
     work_dir.mkdir(exist_ok=True, parents=True)
+    work_dir = pathlib.Path(work_dir).resolve().absolute()
     snakefile_path = work_dir / "Snakefile"
     _local_notebook_dir = work_dir / "notebooks"
     _local_notebook_dir.mkdir(exist_ok=True)
