@@ -576,7 +576,7 @@ class GliderPort:
             timeout -= 600
             self._worker_refresh_clock -= 1
             logger.debug(f"Refresh clock: {self._worker_refresh_clock}, will refresh worker when <= 0.")
-            if self._worker_refresh_clock <= 0:
+            if (self._worker_refresh_clock <= 0) or timeout < 1200:
                 self._update_worker()
             if self._check_min_jobs(max_queue_jobs_per_worker):
                 break
