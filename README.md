@@ -16,3 +16,9 @@ Launch jobs on [skypilot](https://skypilot.readthedocs.io/en/latest/)
 9. In each spot-VM, a GliderPort VM-worker runtime will monitor its worker config dir in GliderPort Runtime Bucket (5), run the next available job. Each job will try RETRY times until success, otherwise mark as fail. VM-worker record the logging information, stderr and stdout to its worker config dir.
 10. Job output is transfer to destination as specified in each job config YAML file.
  
+## Use a different environment for your job
+
+If your packages are not installed in the `base` environment of your image, you have to specify the environment for gliderport to use the correct one to run your job.
+Here are two things you need to do assuming the environment is named `myenv`:
+1. Modify `SKY_TEMPLATE.yaml` to have `conda activate myenv;` before `pip install git+https://github.com/lhqing/gliderport.git`
+2. Modify the following line by prepending `conda activate myenv;` before `glider vm-worker`: https://github.com/lhqing/gliderport/blob/main/gliderport/sky.py#L245
